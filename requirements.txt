@@ -1,0 +1,5 @@
+fqdn
+idna
+jsonpointer
+rfc3987
+uri_template
