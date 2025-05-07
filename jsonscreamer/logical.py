@@ -1,7 +1,7 @@
 """Logical combinators and modifiers of schemas."""
 
 from ._types import _Schema, _Validator, _Error
-from .compile import compile_one as _compile
+from .compile import compile_ as _compile
 from .compile import register as _register
 
 

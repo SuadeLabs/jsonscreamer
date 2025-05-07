@@ -1,9 +1,12 @@
 """Resolve $ref fields in schemas to actual values.
 
 We do this when we parse the schema and cache the results.
-"""
+This code is
 
-from fastjsonschema.ref_resolver import normalize, urlparse, unquote, contextlib, get_id, resolve_path, resolve_remote, re
+"""
+import contextlib
+import urllib.parse as urlparse
+from fastjsonschema.ref_resolver import RefResolver as _FastRefResolver, normalize, get_id, resolve_path, resolve_remote
 
 
 class RefTracker:
@@ -16,19 +19,33 @@ class RefTracker:
 
     def __init__(self, schema, resolver=None):
         # Trackers for various states of compilation
-        self.queued = []
+        self._queued = []
         self._picked = set()
-        self._compiled = {}
+        self.compiled = {}
 
         self._resolver = resolver or RefResolver.from_schema(schema, store={}, handlers=HANDLERS)
 
         # Kick off the compilation with top-level function
-        self.queued.append((self._resolver.get_uri(), self._resolver.get_scope_name()))
-        self._entrypoint_uri = self._resolver.get_uri()
+        self._queued.append(self._resolver.get_uri())
+        self._entrypoint_uri = self._queued[0]
+
+    def __bool__(self) -> bool:
+        return bool(self._queued)
+
+    def queue(self, uri: str) -> None:
+        self._queued.append(uri)
+
+    def pop(self) -> str:
+        uri = self._queued.pop()
+        self._picked.add(uri)
+        return uri
+
+    def seen(self, uri: str) -> bool:
+        return uri in self._picked
 
     @property
     def entrypoint(self):
-        return self._compiled[self._entrypoint_uri]
+        return self.compiled[self._entrypoint_uri]
 
 
 def request_handler(uri):
@@ -42,55 +59,22 @@ def request_handler(uri):
 HANDLERS = {"http": request_handler, "https": request_handler}
 
 
-
-# The following is lifted from fastjsonschema, with some compatibility hacks:
-class RefResolver:
+class RefResolver(_FastRefResolver):
     """
     Resolve JSON References.
+
+    This is a partial rewrite of fastjsonschema's implementation,
+    with some compatibility hacks. See:
+        https://github.com/horejsek/python-fastjsonschema
     """
+    _TRAVERSE_ARBITRARY_KEYS = frozenset(("definitions", "properties"))
 
-    # pylint: disable=dangerous-default-value,too-many-arguments
-    def __init__(self, base_uri, schema, store={}, cache=True, handlers={}):
-        """
-        `base_uri` is URI of the referring document from the `schema`.
-        `store` is an dictionary that will be used to cache the fetched schemas
-        (if `cache=True`).
+    def __init__(self, base_uri, schema, store=..., cache=True, handlers=...):
+        # XXX: import here must be deferred to prevent cyclic imports
+        from .compile import _COMPILATION_FUNCTIONS
+        self._TRAVERSABLE_KEYS = frozenset(_COMPILATION_FUNCTIONS).union(("definitions",)).difference(("const", "enum"))
 
-        Please notice that you can have caching problems when compiling schemas
-        with colliding `$ref`. To force overwriting use `cache=False` or
-        explicitly pass the `store` argument (with a brand new dictionary)
-        """
-        self.base_uri = base_uri
-        self.resolution_scope = base_uri
-        self.schema = schema
-        self.store = store
-        self.cache = cache
-        self.handlers = handlers
-        self.walk(schema)
-
-    @classmethod
-    def from_schema(cls, schema, handlers={}, **kwargs):
-        """
-        Construct a resolver from a JSON schema object.
-        """
-        return cls(
-            get_id(schema) if isinstance(schema, dict) else '',
-            schema,
-            handlers=handlers,
-            **kwargs
-        )
-
-    @contextlib.contextmanager
-    def in_scope(self, scope: str):
-        """
-        Context manager to handle current scope.
-        """
-        old_scope = self.resolution_scope
-        self.resolution_scope = urlparse.urljoin(old_scope, scope)
-        try:
-            yield
-        finally:
-            self.resolution_scope = old_scope
+        super().__init__(base_uri, schema, store, cache, handlers)
 
     @contextlib.contextmanager
     def resolving(self, ref: str):
@@ -124,18 +108,6 @@ class RefResolver:
         finally:
             self.base_uri, self.schema = old_base_uri, old_schema
 
-    def get_uri(self):
-        return normalize(self.resolution_scope)
-
-    def get_scope_name(self):
-        """
-        Get current scope and return it as a valid function name.
-        """
-        name = 'validate_' + unquote(self.resolution_scope).replace('~1', '_').replace('~0', '_').replace('"', '')
-        name = re.sub(r'($[^a-zA-Z]|[^a-zA-Z0-9])', '_', name)
-        name = name.lower().rstrip('_')
-        return name
-
     def walk(self, node: dict, arbitrary_keys=False):
         """
         Walk thru schema and dereferencing ``id`` and ``$ref`` instances
@@ -151,17 +123,9 @@ class RefResolver:
                 # TODO: edge case - fragments in ids - remove for later schemas
                 self.store[self.resolution_scope] = node
                 for key, item in node.items():
-                    if isinstance(item, dict) and (arbitrary_keys or key in _valid_keys()):
-                        self.walk(item, arbitrary_keys=key in _ARBITRARY_KEYS)
+                    if isinstance(item, dict) and (arbitrary_keys or key in self._TRAVERSABLE_KEYS):
+                        self.walk(item, arbitrary_keys=key in self._TRAVERSE_ARBITRARY_KEYS)
         else:
             for key, item in node.items():
-                if isinstance(item, dict) and (arbitrary_keys or key in _valid_keys()):
-                    self.walk(item, arbitrary_keys=key in _ARBITRARY_KEYS)
-
-
-def _valid_keys():
-    from .compile import active_properties
-    return active_properties().union(("definitions",)).difference(("const", "enum"))
-
-
-_ARBITRARY_KEYS = frozenset(("definitions", "properties"))
+                if isinstance(item, dict) and (arbitrary_keys or key in self._TRAVERSABLE_KEYS):
+                    self.walk(item, arbitrary_keys=key in self._TRAVERSE_ARBITRARY_KEYS)

@@ -6,7 +6,7 @@ from typing import TypeVar as _TypeVar
 
 from ._types import _Result, _Schema, _Validator, _Error
 from .basic import _max_len_validator, _min_len_validator, _object_guard
-from .compile import compile_one as _compile
+from .compile import compile_ as _compile
 from .compile import register as _register
 
 _VT = _TypeVar("_VT")

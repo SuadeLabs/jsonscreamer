@@ -9,7 +9,7 @@ from .basic import (
     _strict_bool_nested,
     _array_guard,
 )
-from .compile import compile_one as _compile
+from .compile import compile_ as _compile
 from .compile import register as _register
 
 _T = _TypeVar("_T")

@@ -21,7 +21,13 @@ class Validator:
 
     def __init__(self, schema: _Schema = True):
         self._tracker = RefTracker(schema)
-        self._validator = compile.compile_(schema, self._tracker)
+
+        while self._tracker:
+            uri = self._tracker.pop()
+            with self._tracker._resolver.resolving(uri) as sub_defn:
+                self._tracker.compiled[uri] = compile.compile_(sub_defn, self._tracker)
+
+        self._validator = self._tracker.entrypoint
 
     def is_valid(self, instance: _Any) -> bool:
         return self._validator(instance, [])[0]
