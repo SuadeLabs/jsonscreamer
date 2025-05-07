@@ -1,4 +1,4 @@
-from json_screamer.logical import all_of, any_of, not_, one_of
+from jsonscreamer.logical import all_of, any_of, not_, one_of
 
 
 def test_not():

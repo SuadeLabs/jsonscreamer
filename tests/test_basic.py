@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from json_screamer.basic import (
+from jsonscreamer.basic import (
     const,
     enum,
     exclusive_maximum,

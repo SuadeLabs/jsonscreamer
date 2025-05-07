@@ -1,6 +1,6 @@
 import pytest
 
-from json_screamer import format
+from jsonscreamer import format
 
 _TEST_CASES = {
     "is_date_time": [

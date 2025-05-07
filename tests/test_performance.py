@@ -1,8 +1,8 @@
 import time
 import pytest
 
-from json_screamer.compile import compile_
-from json_screamer import Validator
+from jsonscreamer.compile import compile_
+from jsonscreamer import Validator
 
 POST_BODY = {
     "id": 0,

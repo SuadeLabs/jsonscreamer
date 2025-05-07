@@ -4,7 +4,7 @@ import pathlib
 
 import pytest
 
-from json_screamer import Validator
+from jsonscreamer import Validator
 
 
 HERE = pathlib.Path(__file__).parent

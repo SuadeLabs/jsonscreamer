@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "json_screamer"
+name = "jsonscreamer"
 version = "0.1.0"
 description = "Fast JSON Schema Validator"
 authors = ["Oliver Margetts <oliver.margetts@gmail.com>"]
