@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 from typing import Any as _Any
 
 from . import array, basic, compile, logical, object_
 from ._types import _Schema
-
 from .resolve import RefTracker
 
 

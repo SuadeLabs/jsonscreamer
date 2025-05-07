@@ -4,9 +4,18 @@ We do this when we parse the schema and cache the results.
 This code is
 
 """
+from __future__ import annotations
+
 import contextlib
 import urllib.parse as urlparse
-from fastjsonschema.ref_resolver import RefResolver as _FastRefResolver, normalize, get_id, resolve_path, resolve_remote
+
+from fastjsonschema.ref_resolver import (
+    RefResolver as _FastRefResolver,
+    get_id,
+    normalize,
+    resolve_path,
+    resolve_remote,
+)
 
 
 class RefTracker:

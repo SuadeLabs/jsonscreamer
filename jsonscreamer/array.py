@@ -1,16 +1,15 @@
-from typing import Optional as _Optional
-from typing import Iterable as _Iterable
-from typing import TypeVar as _TypeVar
+from __future__ import annotations
 
-from ._types import _Result, _Schema, _Validator, _Error
+from typing import Iterable as _Iterable, Optional as _Optional, TypeVar as _TypeVar
+
+from ._types import _Error, _Result, _Schema, _Validator
 from .basic import (
+    _array_guard,
     _max_len_validator,
     _min_len_validator,
     _strict_bool_nested,
-    _array_guard,
 )
-from .compile import compile_ as _compile
-from .compile import register as _register
+from .compile import compile_ as _compile, register as _register
 
 _T = _TypeVar("_T")
 

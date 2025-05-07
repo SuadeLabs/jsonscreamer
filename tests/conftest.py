@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pathlib
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from multiprocessing import Process

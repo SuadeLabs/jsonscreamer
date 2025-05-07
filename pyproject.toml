@@ -1,28 +1,135 @@
-[tool.poetry]
+# [build-system]
+# requires = ["flit_core >=3.2,<4"]
+# build-backend = "flit_core.buildapi"
+
+[project]
 name = "jsonscreamer"
 version = "0.1.0"
-description = "Fast JSON Schema Validator"
-authors = ["Oliver Margetts <oliver.margetts@gmail.com>"]
-license = "MIT"
+authors = [{ name = "Oliver Margetts" }]
+description = "fast json schema validator"
+readme = "README.md"
+dependencies = [
+  # format checkers
+  "idna",
+  "jsonpointer",
+  "rfc3987",
+  "uri_template",
+  "fqdn",
+  # ref resolution
+  "fastjsonschema",
+  # remote ref evaluation
+  "requests",
+]
 
-[tool.poetry.dependencies]
-python = "^3.7"
-fqdn = "^1.5.1"
-idna = "^3.3"
-jsonpointer = "^2.3"
-rfc3987 = "^1.3.8"
-uri-template = "^1.2.0"
-jsonschema = "^4.5.1"
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "jsonschema",
+  "ruff",
+  "mypy",
+]
 
-[tool.poetry.dev-dependencies]
-flake8 = "^4.0.1"
-black = "^22.3.0"
-flake8-bugbear = "^22.4.25"
-mypy = "^0.960"
-isort = "^5.10.1"
-pytest = "^7.1.2"
-fastjsonschema = "^2.21.1"
+[tool.ruff]
+line-length = 88
+target-version = "py39"
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+## File Selection
+force-exclude = true # don't check excluded files even if passed directly
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+## Rule Selection
+# to read about ruff rules check this: https://beta.ruff.rs/docs/rules/
+select = [
+  'E',
+  'W',      # pycodestyle: E, W
+  'F',      # pyflakes: F
+  'B',      # flake8-bugbear: B
+  'N',      # pep8-naming: N
+  'ISC',    # flake8-implicit-str-concat: ISC
+  # 'ANN',    # flake8-annotations: ANN
+  'PYI',    # flake8-pyi: PYI
+  'PT',  # flake8-pytest-style: PT (Specifically pytest-raises-too-broad)
+  # 'UP006',
+  # 'UP037',  # pyupgrade: UP (Specifically non-pep585-annotation and quoted-annotation)
+  # 'UP026',  # pyupgrade: UP (Specifically unittest.mock)
+  'RUF013', # ruff: RUF (Specifically implicit-optional)
+  'T10',    # flake8-debugger: T10
+  'S',      # flake8-bandit: S
+  'UP',     # pyupgrade: U
+  'TC',     # flake8-type-checking
+  'RUF101', # redirected-noqa: https://docs.astral.sh/ruff/rules/redirected-noqa/
+  'RUF022', # unsorted-dunder-all: https://docs.astral.sh/ruff/rules/unsorted-dunder-all/
+  'RUF023', # unsorted-dunder-slots: https://docs.astral.sh/ruff/rules/unsorted-dunder-slots/
+]
+ignore = [
+  'E501',   # Line too long: https://beta.ruff.rs/docs/rules/line-too-long/
+  'B905',   # Zip without strict flag
+  'ANN401', # Annotated with `Any`: https://beta.ruff.rs/docs/rules/any-type/
+
+  # The following rules are ignored for `ruff format`'s benefit
+  # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+  'W191',
+  'E111',
+  'E114',
+  'E117',
+  'D206',
+  'D300',
+  'Q000',
+  'Q001',
+  'Q002',
+  'Q003',
+  'COM812',
+  'COM819',
+  'ISC001',
+]
+unfixable = [
+  'ISC', # Occurrences of this are usually due to a missing comma,
+  # We don't want to autofix this as it probably won't be what we want.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Here we are predominantly ignoring Typehinting related rules, namely:
+# - ANN: https://beta.ruff.rs/docs/rules/#flake8-annotations-ann
+# - PYI024: https://beta.ruff.rs/docs/rules/collections-named-tuple/
+
+# External Repo
+"base_image/packages/fire_schemas/fire_schemas/fire/*" = ['ANN', 'PYI024']
+
+# Testing files
+"**/tests/*" = ['ANN', 'PYI024', 'S']
+"**/test_*.py" = ['ANN', 'PYI024', 'S']
+"**/conftest.py" = ['ANN', 'PYI024', 'S']
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = []
+staticmethod-decorators = []
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = []
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = true
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+exempt-modules = []
+runtime-evaluated-base-classes = []
+
+[tool.ruff.lint.isort]
+
+required-imports = ["from __future__ import annotations"]
+relative-imports-order = "closest-to-furthest"
+combine-as-imports = true
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "first-party",
+  "local-folder",
+]

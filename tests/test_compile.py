@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from jsonscreamer.compile import _name_from_validator
 
 

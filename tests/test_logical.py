@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest import mock
 
 from jsonscreamer.logical import all_of, any_of, not_, one_of

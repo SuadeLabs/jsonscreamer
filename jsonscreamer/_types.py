@@ -1,10 +1,13 @@
-from typing import Any as _Any
-from typing import Callable as _Callable
-from typing import Dict as _Dict
-from typing import Optional as _Optional
-from typing import Tuple as _Tuple
+from __future__ import annotations
 
-from typing import NamedTuple
+from typing import (
+    Any as _Any,
+    Callable as _Callable,
+    Dict as _Dict,
+    NamedTuple,
+    Optional as _Optional,
+    Tuple as _Tuple,
+)
 
 
 class _Error(NamedTuple):

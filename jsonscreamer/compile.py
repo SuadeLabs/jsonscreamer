@@ -1,8 +1,9 @@
-from collections.abc import Callable as _Callable
-from typing import Dict as _Dict
-from typing import TypeVar as _TypeVar
+from __future__ import annotations
 
-from ._types import _Compiler, _Schema, _Error
+from collections.abc import Callable as _Callable
+from typing import Dict as _Dict, TypeVar as _TypeVar
+
+from ._types import _Compiler, _Error, _Schema
 from .resolve import RefTracker
 
 _CT = _TypeVar("_CT", bound=_Compiler)

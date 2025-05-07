@@ -7,16 +7,16 @@ def validate(value):
     return value in {"foo", "bar"}
 ```
 """
+from __future__ import annotations
 
 import logging as _logging
 import re as _re
-from typing import Union as _Union
 from collections.abc import Collection as _Collection
+from typing import Union as _Union
 
-from ._types import _Schema, _Validator, _Error
+from ._types import _Error, _Schema, _Validator
 from .compile import register as _register
 from .format import FORMATS as _FORMATS
-
 
 _TYPE_CHECKERS = {
     "object": lambda x: isinstance(x, dict),

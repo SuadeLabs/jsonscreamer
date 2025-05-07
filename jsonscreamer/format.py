@@ -2,11 +2,11 @@
 
 Example: ...
 """
+from __future__ import annotations
 
 import ipaddress as _ipaddress
 import re as _re
-from datetime import date as _date
-from datetime import datetime as _datetime
+from datetime import date as _date, datetime as _datetime
 from uuid import UUID as _UUID
 
 import idna as _idna

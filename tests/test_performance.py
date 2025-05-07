@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import time
+
 import pytest
 
+from jsonscreamer import Validator
 from jsonscreamer.compile import compile_
 from jsonscreamer.resolve import RefTracker
-from jsonscreamer import Validator
 
 POST_BODY = {
     "id": 0,

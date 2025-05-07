@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import pathlib
@@ -5,7 +7,6 @@ import pathlib
 import pytest
 
 from jsonscreamer import Validator
-
 
 HERE = pathlib.Path(__file__).parent
 TEST_SUITE = HERE / "JSON-Schema-Test-Suite" / "tests"
