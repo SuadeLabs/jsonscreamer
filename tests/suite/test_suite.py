@@ -13,18 +13,23 @@ DRAFT7 = TEST_SUITE / "draft7"
 TEST_FILES = tuple(fn for fn in os.listdir(DRAFT7) if fn.endswith(".json"))
 
 
-@pytest.mark.parametrize("filename", TEST_FILES)
-def test_all(filename: str, _remote_ref_server: None):
-    with open(DRAFT7 / filename) as f:
-        test_cases = json.load(f)
+def _enumerate_test_cases():
+    for filename in TEST_FILES:
+        with (DRAFT7 / filename).open() as f:
+            test_cases = json.load(f)
 
-    for test_case in test_cases:
-        print(test_case["description"])
-        schema = test_case["schema"]
-        validator = Validator(schema)
+        for test_case in test_cases:
+            yield pytest.param(test_case, id=test_case["description"])
 
-        for test in test_case["tests"]:
-            if test["valid"]:
-                assert validator.is_valid(test["data"]), test["description"]
-            else:
-                assert not validator.is_valid(test["data"]), test["description"]
+
+@pytest.mark.parametrize("test_case", _enumerate_test_cases())
+def test_draft7(test_case,  _remote_ref_server: None):
+    print(test_case["description"])
+    schema = test_case["schema"]
+    validator = Validator(schema)
+
+    for test in test_case["tests"]:
+        if test["valid"]:
+            assert validator.is_valid(test["data"]), test["description"]
+        else:
+            assert not validator.is_valid(test["data"]), test["description"]
