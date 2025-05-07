@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "jsonscreamer"
+name = "json_screamer"
 version = "0.1.0"
 description = "Fast JSON Schema Validator"
 authors = ["Oliver Margetts <oliver.margetts@gmail.com>"]
@@ -12,6 +12,7 @@ idna = "^3.3"
 jsonpointer = "^2.3"
 rfc3987 = "^1.3.8"
 uri-template = "^1.2.0"
+jsonschema = "^4.5.1"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"

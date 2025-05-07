@@ -2,13 +2,32 @@
 
 We do this when we parse the schema and cache the results.
 """
+
 import copy as _copy
-import json as _json
 from typing import Any as _Any
 from urllib.parse import urlsplit as _urlsplit
-from urllib.request import urlopen as _urlopen
 
 from jsonpointer import resolve_pointer as _resolve_pointer
+import requests
+
+
+__ID_REGISTRY = {}
+
+
+def register_ids(defn, within_properties=False):
+    if isinstance(defn, dict):
+        if "$id" in defn:
+            __ID_REGISTRY[defn["$id"]] = defn
+
+        # TODO: it seems permissible to put an id on any valid directive,
+        # but we only support top-level and definition-level ids for now
+        if "definitions" in defn:
+            for value in defn["definitions"].values():
+                register_ids(value)
+
+    elif isinstance(defn, list):
+        for item in defn:
+            register_ids(item)
 
 
 def resolve_refs(root: _Any, defn: _Any, copied: bool = False) -> _Any:
@@ -34,9 +53,24 @@ def resolve_refs(root: _Any, defn: _Any, copied: bool = False) -> _Any:
 def resolve_ref(root: _Any, ref: str):
     parsed = _urlsplit(ref)
 
-    if parsed.netloc:
-        with _urlopen(ref) as socket:
-            document = _json.loads(socket.read())
+    base_uri = ""
+    if parsed.netloc or parsed.path:
+        prefix = f"{parsed.scheme}://" if parsed.scheme else ""
+        base_uri = prefix + parsed.netloc + parsed.path
+
+        # First check if the ref refers to a local id
+        if base_uri in __ID_REGISTRY:
+            document = __ID_REGISTRY[base_uri]
+
+        elif parsed.netloc:
+            resp = requests.get(ref)
+            resp.raise_for_status()
+            document = __ID_REGISTRY[base_uri] = resp.json()
+
+        else:
+            # warning or error?
+            raise RuntimeError(f"could not resolve {ref}")
+
     else:
         document = root
 

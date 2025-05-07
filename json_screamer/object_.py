@@ -1,44 +1,57 @@
 import re as _re
-from typing import Any as _Any
 from typing import Dict as _Dict
-from typing import List as _List
 from typing import Optional as _Optional
+from typing import Iterable as _Iterable
+from typing import TypeVar as _TypeVar
 
-from ._types import _Schema, _Validator
+from ._types import _Result, _Schema, _Validator, _Error
+from .basic import _max_len_validator, _min_len_validator, _object_guard
 from .compile import compile_ as _compile
 from .compile import register as _register
 
+_VT = _TypeVar("_VT")
+
 
 @_register
-def max_properties(defn: _Schema) -> _Validator:
+def max_properties(defn: _Schema, record_path: bool) -> _Validator:
     value: int = defn["maxProperties"]
-    return lambda x: len(x) <= value
+    guard = _object_guard(defn)
+    return guard(_max_len_validator(value, record_path))
 
 
 @_register
-def min_properties(defn: _Schema) -> _Validator:
+def min_properties(defn: _Schema, record_path: bool) -> _Validator:
     value: int = defn["minProperties"]
-    return lambda x: len(x) >= value
+    guard = _object_guard(defn)
+    return guard(_min_len_validator(value, record_path))
 
 
 @_register
-def required(defn: _Schema) -> _Optional[_Validator]:
-    value: _List[str] = defn["required"]
-    if value:
-        return lambda x: all(v in x for v in value)
-    return None
+def property_names(defn: _Schema, record_path: bool) -> _Validator:
+    validator = _compile(defn["propertyNames"], record_path=False)
+
+    @_object_guard(defn)
+    def validate(x, path):
+        for key in x:
+            result = validator(key, path)
+            if not result[0]:
+                return result
+        return True, None
+
+    return validate
 
 
 @_register
-def dependent_required(defn: _Schema) -> _Optional[_Validator]:
-    value: _Dict[str, _List[str]] = defn["required"]
+def required(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
+    value: list[str] = defn["required"]
     if value:
 
-        def validate(x):
-            for dependent, required in value.items():
-                if dependent in x and not all(r in x for r in required):
-                    return False
-            return True
+        @_object_guard(defn)
+        def validate(x, path):
+            for v in value:
+                if v not in x:
+                    return False, _Error(path, f"{v} is a required property")
+            return True, None
 
         return validate
 
@@ -46,48 +59,133 @@ def dependent_required(defn: _Schema) -> _Optional[_Validator]:
 
 
 @_register
-def properties(defn: _Schema) -> _Validator:
-    value = defn["properties"]
-    validators = {k: _compile(v) for k, v in value.items()}
-    # NOTE: we expect x to be smaller than the property dict hence we iterate over x
-    # we could put some advanced logic in here to iterate over the smaller of the two
-    return lambda x: all(k not in validators or validators[k](v) for k, v in x.items())
+def dependencies(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
+    value: _Dict[str, list[str] | _Schema] = defn["dependencies"]
+    if not value:
+        return None
+
+    checkers = {}
+
+    for dependent, requirement in value.items():
+        if isinstance(requirement, list):
+            # Has the effect of 'activating' a required directive
+            fake_schema = {"required": requirement}
+            if "type" in defn:
+                fake_schema["type"] = defn["type"]
+
+            checker = required(fake_schema, record_path=False)
+        else:
+            checker = _compile(requirement, record_path=False)
+
+        if checker is not None:
+            checkers[dependent] = checker
+
+    @_object_guard(defn)
+    def validate(x, path):
+        for dependent, checker in checkers.items():
+            if dependent in x:
+                valid, error = checker(x, path)
+                if not valid:
+                    return valid, _Error(
+                        path,
+                        f"dependency for {dependent} not satisfied: {error.message}",
+                    )
+
+        return True, None
+
+    return validate
+
+
+def _path_push_iterator(
+    path: list[str | int], obj: dict[str, _VT]
+) -> _Iterable[tuple[str, _VT]]:
+    path.append("")  # front-load memory allocation
+    try:
+        for key, value in obj.items():
+            path[-1] = key
+            yield key, value
+    finally:
+        path.pop()
+
+
+def _no_op_iterator(
+    path: list[str | int], obj: dict[str, _VT]
+) -> _Iterable[tuple[str, _VT]]:
+    return obj.items()
 
 
 @_register
-def pattern_properties(defn: _Schema) -> _Validator:
-    value = defn["patternProperties"]
-    validators = ((_re.compile(k), _compile(v)) for k, v in value.items())
+def properties(defn: _Schema, record_path: bool) -> _Validator:
+    value = defn["properties"]
+    validators = {k: _compile(v, record_path) for k, v in value.items()}
 
-    def validate(x: _Dict[str, _Any]) -> bool:
-        # ugh...
-        for rex, val in validators:
-            for k, v in x.items():
-                if rex.match(k) and not val(v):
-                    return False
+    if record_path:
+        iterator = _path_push_iterator
+    else:
+        iterator = _no_op_iterator
 
-        return True
+    @_object_guard(defn)
+    def validate(x: _Schema, path) -> _Result:
+        for k, v in iterator(path, x):
+            if k in validators:
+                result = validators[k](v, path)
+                if not result[0]:
+                    return result
+
+        return True, None
 
     return validate
 
 
 @_register
-def additional_properties(defn: _Schema) -> _Validator:
+def pattern_properties(defn: _Schema, record_path: bool) -> _Validator:
+    value = defn["patternProperties"]
+    validators = [(_re.compile(k), _compile(v, record_path)) for k, v in value.items()]
+
+    if record_path:
+        iterator = _path_push_iterator
+    else:
+        iterator = _no_op_iterator
+
+    @_object_guard(defn)
+    def validate(x: _Schema, path: list[str | int]) -> _Result:
+        # ugh...
+        for rex, val in validators:
+            for k, v in iterator(path, x):
+                if rex.search(k):
+                    result = val(v, path)
+                    if not result[0]:
+                        return result
+
+        return True, None
+
+    return validate
+
+
+@_register
+def additional_properties(defn: _Schema, record_path: bool) -> _Validator:
     value = defn["additionalProperties"]
-    simple_validator = _compile(value)
+    simple_validator = _compile(value, record_path)
 
     excluded_names = set(defn.get("properties", ()))
     excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties", ())]
 
-    def validate(x: _Dict[str, _Any]) -> bool:
-        for k, v in x.items():
+    if record_path:
+        iterator = _path_push_iterator
+    else:
+        iterator = _no_op_iterator
+
+    @_object_guard(defn)
+    def validate(x: _Schema, path: list[str | int]) -> _Result:
+        for k, v in iterator(path, x):
             if k in excluded_names:
                 continue
             if any(r.match(k) for r in excluded_rexes):
                 continue
-            if not simple_validator(v):
-                return False
+            result = simple_validator(v, path)
+            if not result[0]:
+                return result
 
-        return True
+        return True, None
 
     return validate
