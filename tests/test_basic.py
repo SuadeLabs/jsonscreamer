@@ -2,15 +2,7 @@ import datetime
 
 import pytest
 
-from json_screamer.basic import (
-    boolean,
-    integer,
-    null,
-    number,
-    string,
-    _numeric,
-)
-
+from json_screamer.basic import _numeric, boolean, integer, null, number, string
 
 TYPENAMES = ("boolean", "integer", "null", "number", "string", "zzzzzz")
 
@@ -41,7 +33,7 @@ class CompilerBaseTestCase:
             -1.1,
             3.14,
             "lol",
-            u"",
+            "",
             datetime.datetime(2018, 1, 1),
         ]
 

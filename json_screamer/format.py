@@ -5,7 +5,8 @@ Example: ...
 
 import ipaddress as _ipaddress
 import re as _re
-from datetime import datetime as _datetime, date as _date
+from datetime import date as _date
+from datetime import datetime as _datetime
 from typing import Optional as _Optional
 from uuid import UUID as _UUID
 
@@ -41,13 +42,13 @@ def is_date(x: str) -> bool:
 
 
 def is_email(x: str) -> bool:
-    """"Internet email address, see RFC 5322, section 3.4.1."""
+    """ "Internet email address, see RFC 5322, section 3.4.1."""
     # TODO: this is from jsonschema, but obviously not in line with RFC
     return "@" in x
 
 
 def is_ipv4(x: str) -> bool:
-    """"IPv4 address, see RFC 2673, section 3.2."""
+    """ "IPv4 address, see RFC 2673, section 3.2."""
     try:
         _ipaddress.IPv4Address(x)
         return True
@@ -56,7 +57,7 @@ def is_ipv4(x: str) -> bool:
 
 
 def is_ipv6(x: str) -> bool:
-    """"IPv6 address, see RFC 2373, section 2.2."""
+    """ "IPv6 address, see RFC 2373, section 2.2."""
     try:
         address = _ipaddress.IPv6Address(x)
         return not getattr(address, "scope_id", "")  # ???
@@ -83,7 +84,7 @@ def is_uuid(x: str) -> bool:
 
 
 def is_hostname(x: str) -> bool:
-    """"Internet host name, see RFC 1034, section 3.1."""
+    """ "Internet host name, see RFC 1034, section 3.1."""
     try:
         return _FQDN(x).is_valid
     except ValueError:
@@ -141,6 +142,7 @@ def is_json_pointer(x: str) -> bool:
         return _jsonpointer.JsonPointer(x)
     except _jsonpointer.JsonPointerException:
         return False
+
 
 def is_relative_json_pointer(x: str) -> bool:
     """A JSON pointer relative to the current document.

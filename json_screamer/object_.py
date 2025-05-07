@@ -1,78 +1,90 @@
+import re as _re
 from typing import Any as _Any
+from typing import Dict as _Dict
+from typing import List as _List
+from typing import Optional as _Optional
 
-from .compile import compile_ as _compile, register as _register
 from ._types import _Schema, _Validator
+from .compile import compile_ as _compile
+from .compile import register as _register
 
 
 @_register
-def object_(defn: _Schema) -> _Validator:
-    assert defn["type"] == "object"
+def max_properties(defn: _Schema) -> _Validator:
+    value: int = defn["maxProperties"]
+    return lambda x: len(x) <= value
 
-    conditions = [lambda x: isinstance(x, dict)]
 
-    if "properties" in defn:
-        properties = defn["properties"]
-        validators = {key: _compile(val) for key, val in properties.items()}
+@_register
+def min_properties(defn: _Schema) -> _Validator:
+    value: int = defn["minProperties"]
+    return lambda x: len(x) >= value
 
-        if "additionalProperties" in defn:
-            aps = defn["additionalProperties"]
-            if isinstance(aps, dict):
-                default = _compile(aps)
 
-                conditions.append(lambda x: all(
-                    validators.get(k, default)(v) for k, v in x.items()
-                ))
-            elif aps is False:
-                conditions.append(lambda x: all(
-                    k in validators and validators[k](v) for k, v in x.items()
-                ))
+@_register
+def required(defn: _Schema) -> _Optional[_Validator]:
+    value: _List[str] = defn["required"]
+    if value:
+        return lambda x: all(v in x for v in value)
 
-            else:
-                conditions.append(lambda x: all(
-                    validators[k](v) for k, v in x.items() if k in validators
-                ))
 
-    else:
-        if "additionalProperties" in defn:
-            aps = defn["additionalProperties"]
-            if aps is False:
-                conditions.append(lambda x: len(x) == 0)
+@_register
+def dependent_required(defn: _Schema) -> _Optional[_Validator]:
+    value: _Dict[str, _List[str]] = defn["required"]
+    if value:
 
-            elif isinstance(aps, dict):
-                validator = _compile(aps)
-                conditions.append(
-                    lambda x: all(validator(v) for v in x.values())
-                )
+        def validate(x):
+            for dependent, required in value.items():
+                if dependent in x and not all(r in x for r in required):
+                    return False
+            return True
 
-    if "required" in defn:
-        required = defn["required"]
-        conditions.append(lambda x: all(r in x for r in required))
+        return validate
 
-    if "minProperties" in defn:
-        minlen = defn["minProperties"]
-        conditions.append(lambda x: len(x) >= minlen)
 
-    if "maxProperties" in defn:
-        maxlen = defn["maxProperties"]
-        conditions.append(lambda x: len(x) <= maxlen)
+@_register
+def properties(defn: _Schema) -> _Validator:
+    value = defn["properties"]
+    validators = {k: _compile(v) for k, v in value.items()}
+    # NOTE: we expect x to be smaller than the property dict hence we iterate over x
+    # we could put some advanced logic in here to iterate over the smaller of the two
+    return lambda x: all(k not in validators or validators[k](v) for k, v in x.items())
 
-    if "dependencies" in defn:
-        dependencies = defn["dependencies"]
 
-        for key, deps in dependencies.items():
-            if isinstance(deps, list):
-                conditions.append(
-                    lambda x, key=key, deps=deps:
-                    key not in x or all(d in x for d in deps)
-                )
-            else:
-                condition = _compile(deps)
-                conditions.append(
-                    lambda x, condition=condition: key not in x or condition(x)
-                )
+@_register
+def pattern_properties(defn: _Schema) -> _Validator:
+    value = defn["patternProperties"]
+    validators = ((_re.compile(k), _compile(v)) for k, v in value.items())
 
-    # TODO: pattern properties
-    def validate(x: _Any) -> bool:
-        return all(c(x) for c in conditions)
+    def validate(x: _Dict[str, _Any]) -> bool:
+        # ugh...
+        for rex, val in validators:
+            for k, v in x.items():
+                if rex.match(k) and not val(v):
+                    return False
+
+        return True
+
+    return validate
+
+
+@_register
+def additional_properties(defn: _Schema) -> _Validator:
+    value = defn["additionalProperties"]
+    simple_validator = _compile(value)
+
+    excluded_names = set(defn.get("properties"))
+    excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties")]
+
+    def validate(x: _Dict[str, _Any]) -> bool:
+        for k, v in x.items():
+            if k in excluded_names:
+                continue
+            if any(r.match(k) for r in excluded_rexes):
+                continue
+            if not simple_validator(v):
+                return False
+
+        return True
 
     return validate
