@@ -7,7 +7,6 @@ import ipaddress as _ipaddress
 import re as _re
 from datetime import date as _date
 from datetime import datetime as _datetime
-from typing import Optional as _Optional
 from uuid import UUID as _UUID
 
 import idna as _idna
@@ -17,7 +16,7 @@ import uri_template as _uri_template
 from fqdn import FQDN as _FQDN
 
 
-def is_date_time(x: str) -> _Optional[bool]:
+def is_date_time(x: str) -> bool:
     """Date-time, see RFC 3339, section 5.6"""
     possible_formats = ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ")
 
@@ -27,6 +26,8 @@ def is_date_time(x: str) -> _Optional[bool]:
             return True
         except ValueError:
             continue
+
+    return False
 
 
 def is_time(x: str) -> bool:
@@ -196,7 +197,7 @@ def is_duration(x: str) -> bool:
     if len(pieces) == 1:
         return bool(__duration_date_order.fullmatch(x))
     elif len(pieces) == 2:
-        return (
+        return bool(
             pieces[1]
             and __duration_date_order.fullmatch(pieces[0])
             and __duration_time_order.fullmatch(pieces[1])

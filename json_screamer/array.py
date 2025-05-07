@@ -9,7 +9,7 @@ from .compile import register as _register
 @_register
 def min_items(defn: _Schema) -> _Validator:
     value: int = defn["minItems"]
-    lambda x: len(x) >= value
+    return lambda x: len(x) >= value
 
 
 @_register

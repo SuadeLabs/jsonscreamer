@@ -50,7 +50,7 @@ def max_length(defn: _Schema) -> _Validator:
 def pattern(defn: _Schema) -> _Validator:
     value: str = defn["pattern"]
     rex = _re.compile(value)
-    return rex.match
+    return lambda x: bool(rex.match(x))
 
 
 @_register
@@ -67,7 +67,7 @@ def const(defn: _Schema) -> _Validator:
 
 
 @_register
-def format(defn: _Schema) -> _Validator:
+def format_(defn: _Schema) -> _Validator:
     value: str = defn["format"]
     if value in _FORMATS:
         return _FORMATS[value]

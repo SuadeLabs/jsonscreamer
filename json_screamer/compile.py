@@ -1,11 +1,12 @@
-from typing import Dict as _Dict
+from typing import Dict as _Dict, Union as _Union
 
-from ._types import _Schema, _Validator
+from ._types import _Schema, _Compiler
+from .resolve import resolve_refs
 
-__COMPILATION_FUNCTIONS: _Dict[str, _Validator] = {}
+__COMPILATION_FUNCTIONS: _Dict[str, _Compiler] = {}
 
 
-def register(validator: _Validator) -> _Validator:
+def register(validator: _Compiler) -> _Compiler:
     """Register a validator for compiling a given type."""
     pieces = validator.__name__.rstrip("_").split("_")
     # JSON Scheam uses camelCase
@@ -19,16 +20,19 @@ def register(validator: _Validator) -> _Validator:
     return validator
 
 
-def compile(defn: _Schema):
+def compile_(defn: _Union[_Schema, bool]):
     if defn in ({}, True):
         return lambda x: True
     elif defn is False:
         return lambda x: False
 
-    else:
-        validators = []
-        for k, v in defn.items():
-            if k in __COMPILATION_FUNCTIONS:
-                validators.append(__COMPILATION_FUNCTIONS[k](v))
+    res: _Schema = resolve_refs(defn, defn)
 
-        return lambda x: all(v(x) for v in validators)
+    validators = []
+    for k in res:
+        if k in __COMPILATION_FUNCTIONS:
+            validator = __COMPILATION_FUNCTIONS[k](res)
+            if validator is not None:
+                validators.append(validator)
+
+    return lambda x: all(v(x) for v in validators)

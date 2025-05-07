@@ -26,6 +26,7 @@ def required(defn: _Schema) -> _Optional[_Validator]:
     value: _List[str] = defn["required"]
     if value:
         return lambda x: all(v in x for v in value)
+    return None
 
 
 @_register
@@ -40,6 +41,8 @@ def dependent_required(defn: _Schema) -> _Optional[_Validator]:
             return True
 
         return validate
+
+    return None
 
 
 @_register
@@ -73,8 +76,8 @@ def additional_properties(defn: _Schema) -> _Validator:
     value = defn["additionalProperties"]
     simple_validator = _compile(value)
 
-    excluded_names = set(defn.get("properties"))
-    excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties")]
+    excluded_names = set(defn.get("properties", ()))
+    excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties", ())]
 
     def validate(x: _Dict[str, _Any]) -> bool:
         for k, v in x.items():
