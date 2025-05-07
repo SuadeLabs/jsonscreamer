@@ -6,29 +6,29 @@ from typing import TypeVar as _TypeVar
 
 from ._types import _Result, _Schema, _Validator, _Error
 from .basic import _max_len_validator, _min_len_validator, _object_guard
-from .compile import compile_ as _compile
+from .compile import compile_one as _compile
 from .compile import register as _register
 
 _VT = _TypeVar("_VT")
 
 
 @_register
-def max_properties(defn: _Schema, record_path: bool) -> _Validator:
+def max_properties(defn: _Schema, tracker) -> _Validator:
     value: int = defn["maxProperties"]
     guard = _object_guard(defn)
-    return guard(_max_len_validator(value, record_path))
+    return guard(_max_len_validator(value))
 
 
 @_register
-def min_properties(defn: _Schema, record_path: bool) -> _Validator:
+def min_properties(defn: _Schema, tracker) -> _Validator:
     value: int = defn["minProperties"]
     guard = _object_guard(defn)
-    return guard(_min_len_validator(value, record_path))
+    return guard(_min_len_validator(value))
 
 
 @_register
-def property_names(defn: _Schema, record_path: bool) -> _Validator:
-    validator = _compile(defn["propertyNames"], record_path=False)
+def property_names(defn: _Schema, tracker) -> _Validator:
+    validator = _compile(defn["propertyNames"], tracker)
 
     @_object_guard(defn)
     def validate(x, path):
@@ -42,7 +42,7 @@ def property_names(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def required(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
+def required(defn: _Schema, tracker) -> _Optional[_Validator]:
     value: list[str] = defn["required"]
     if value:
 
@@ -59,7 +59,7 @@ def required(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
 
 
 @_register
-def dependencies(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
+def dependencies(defn: _Schema, tracker) -> _Optional[_Validator]:
     value: _Dict[str, list[str] | _Schema] = defn["dependencies"]
     if not value:
         return None
@@ -73,9 +73,9 @@ def dependencies(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
             if "type" in defn:
                 fake_schema["type"] = defn["type"]
 
-            checker = required(fake_schema, record_path=False)
+            checker = required(fake_schema, tracker)
         else:
-            checker = _compile(requirement, record_path=False)
+            checker = _compile(requirement, tracker)
 
         if checker is not None:
             checkers[dependent] = checker
@@ -108,25 +108,14 @@ def _path_push_iterator(
         path.pop()
 
 
-def _no_op_iterator(
-    path: list[str | int], obj: dict[str, _VT]
-) -> _Iterable[tuple[str, _VT]]:
-    return obj.items()
-
-
 @_register
-def properties(defn: _Schema, record_path: bool) -> _Validator:
+def properties(defn: _Schema, tracker) -> _Validator:
     value = defn["properties"]
-    validators = {k: _compile(v, record_path) for k, v in value.items()}
-
-    if record_path:
-        iterator = _path_push_iterator
-    else:
-        iterator = _no_op_iterator
+    validators = {k: _compile(v, tracker) for k, v in value.items()}
 
     @_object_guard(defn)
     def validate(x: _Schema, path) -> _Result:
-        for k, v in iterator(path, x):
+        for k, v in _path_push_iterator(path, x):
             if k in validators:
                 result = validators[k](v, path)
                 if not result[0]:
@@ -138,20 +127,15 @@ def properties(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def pattern_properties(defn: _Schema, record_path: bool) -> _Validator:
+def pattern_properties(defn: _Schema, tracker) -> _Validator:
     value = defn["patternProperties"]
-    validators = [(_re.compile(k), _compile(v, record_path)) for k, v in value.items()]
-
-    if record_path:
-        iterator = _path_push_iterator
-    else:
-        iterator = _no_op_iterator
+    validators = [(_re.compile(k), _compile(v, tracker)) for k, v in value.items()]
 
     @_object_guard(defn)
     def validate(x: _Schema, path: list[str | int]) -> _Result:
         # ugh...
         for rex, val in validators:
-            for k, v in iterator(path, x):
+            for k, v in _path_push_iterator(path, x):
                 if rex.search(k):
                     result = val(v, path)
                     if not result[0]:
@@ -163,21 +147,16 @@ def pattern_properties(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def additional_properties(defn: _Schema, record_path: bool) -> _Validator:
+def additional_properties(defn: _Schema, tracker) -> _Validator:
     value = defn["additionalProperties"]
-    simple_validator = _compile(value, record_path)
+    simple_validator = _compile(value, tracker)
 
     excluded_names = set(defn.get("properties", ()))
     excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties", ())]
 
-    if record_path:
-        iterator = _path_push_iterator
-    else:
-        iterator = _no_op_iterator
-
     @_object_guard(defn)
     def validate(x: _Schema, path: list[str | int]) -> _Result:
-        for k, v in iterator(path, x):
+        for k, v in _path_push_iterator(path, x):
             if k in excluded_names:
                 continue
             if any(r.match(k) for r in excluded_rexes):

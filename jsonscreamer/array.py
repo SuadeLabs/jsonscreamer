@@ -1,4 +1,3 @@
-from typing import Any as _Any
 from typing import Optional as _Optional
 from typing import Iterable as _Iterable
 from typing import TypeVar as _TypeVar
@@ -10,27 +9,27 @@ from .basic import (
     _strict_bool_nested,
     _array_guard,
 )
-from .compile import compile_ as _compile
+from .compile import compile_one as _compile
 from .compile import register as _register
 
 _T = _TypeVar("_T")
 
 
 @_register
-def min_items(defn: _Schema, record_path: bool) -> _Validator:
+def min_items(defn: _Schema, tracker) -> _Validator:
     value: int = defn["minItems"]
     guard = _array_guard(defn)
-    return guard(_min_len_validator(value, record_path))
+    return guard(_min_len_validator(value))
 
 
 @_register
-def max_items(defn: _Schema, record_path: bool) -> _Validator:
+def max_items(defn: _Schema, tracker) -> _Validator:
     value: int = defn["maxItems"]
     guard = _array_guard(defn)
-    return guard(_max_len_validator(value, record_path))
+    return guard(_max_len_validator(value))
 
 
-def _unique_checker(x: list[_Any], path: list[str | int], _second_run=False) -> _Result:
+def _unique_checker(x: list[object], path: list[str | int], _second_run=False) -> _Result:
     # Happy path first, then fall back to more expensive expressions
     if _second_run:
         x = _strict_bool_nested(x)
@@ -57,7 +56,7 @@ def _unique_checker(x: list[_Any], path: list[str | int], _second_run=False) -> 
 
 
 @_register
-def unique_items(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
+def unique_items(defn: _Schema, tracker) -> _Optional[_Validator]:
     if defn["uniqueItems"]:
         guard = _array_guard(defn)
         return guard(_unique_checker)
@@ -76,26 +75,15 @@ def _path_push_iterator(
         path.pop()
 
 
-def _no_op_iterator(
-    path: list[str | int], iterable: _Iterable[_T], offset: int = 0
-) -> _Iterable[_T]:
-    return iter(iterable)
-
-
 @_register
-def items(defn: _Schema, record_path: bool) -> _Validator:
+def items(defn: _Schema, tracker) -> _Validator:
     value: list[_Schema] | _Schema = defn["items"]
-    if record_path:
-        iterator = _path_push_iterator
-    else:
-        iterator = _no_op_iterator
-
     if isinstance(value, list):
-        validators = [_compile(d, record_path) for d in value]
+        validators = [_compile(d, tracker) for d in value]
 
         @_array_guard(defn)
         def validate(x, path):
-            for v, i in iterator(path, zip(validators, x)):
+            for v, i in _path_push_iterator(path, zip(validators, x)):
                 result = v(i, path)
                 if not result[0]:
                     return result
@@ -103,11 +91,11 @@ def items(defn: _Schema, record_path: bool) -> _Validator:
             return True, None
 
     else:
-        validator = _compile(value, record_path)
+        validator = _compile(value, tracker)
 
         @_array_guard(defn)
         def validate(x, path):
-            for i in iterator(path, x):
+            for i in _path_push_iterator(path, x):
                 result = validator(i, path)
                 if not result[0]:
                     return result
@@ -118,23 +106,18 @@ def items(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def additional_items(defn: _Schema, record_path: bool) -> _Validator:
+def additional_items(defn: _Schema, tracker) -> _Validator:
     item_spec: dict | list = defn.get("items", {})
     if isinstance(item_spec, dict):
         # this is a no-op
         return lambda x, path: (True, None)
 
     offset = len(item_spec)
-    validator = _compile(defn["additionalItems"], record_path)
-
-    if record_path:
-        iterator = _path_push_iterator
-    else:
-        iterator = _no_op_iterator
+    validator = _compile(defn["additionalItems"], tracker)
 
     @_array_guard(defn)
     def validate(x, path):
-        for i in iterator(path, x[offset:], offset):
+        for i in _path_push_iterator(path, x[offset:], offset):
             result = validator(i, path)
             if not result[0]:
                 return result
@@ -145,8 +128,8 @@ def additional_items(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def contains(defn: _Schema, record_path: bool) -> _Validator:
-    validator = _compile(defn["contains"], record_path=False)
+def contains(defn: _Schema, tracker) -> _Validator:
+    validator = _compile(defn["contains"], tracker)
 
     @_array_guard(defn)
     def validate(x, path):
@@ -162,11 +145,11 @@ def contains(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def max_contains(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
+def max_contains(defn: _Schema, tracker) -> _Optional[_Validator]:
     if "contains" not in defn:
         return None
 
-    validator = _compile(defn["contains"], record_path=False)
+    validator = _compile(defn["contains"], tracker)
     value: int = defn["maxContains"]
 
     @_array_guard(defn)
@@ -183,11 +166,11 @@ def max_contains(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
 
 
 @_register
-def min_contains(defn: _Schema, record_path: bool) -> _Optional[_Validator]:
+def min_contains(defn: _Schema, tracker) -> _Optional[_Validator]:
     if "contains" not in defn:
         return None
 
-    validator = _compile(defn["contains"], record_path=False)
+    validator = _compile(defn["contains"], tracker)
     value: int = defn["minContains"]
 
     @_array_guard(defn)

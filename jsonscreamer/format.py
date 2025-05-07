@@ -18,7 +18,7 @@ from fqdn import FQDN as _FQDN
 
 def is_date_time(x: str) -> bool:
     """Date-time, see RFC 3339, section 5.6"""
-    possible_formats = ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ")
+    possible_formats = ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S")
 
     for format in possible_formats:
         try:

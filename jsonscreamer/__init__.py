@@ -3,6 +3,8 @@ from typing import Any as _Any
 from . import array, basic, compile, logical, object_
 from ._types import _Schema
 
+from .resolve import RefTracker
+
 
 class ValidationError(ValueError):
     """Raised when an instance does not conform to the provided schema."""
@@ -17,8 +19,9 @@ class Validator:
         >>> validator.validate(some_instance)
     """
 
-    def __init__(self, schema: _Schema, record_path: bool = True):
-        self._validator = compile.compile_(schema, record_path=record_path)
+    def __init__(self, schema: _Schema = True):
+        self._tracker = RefTracker(schema)
+        self._validator = compile.compile_(schema, self._tracker)
 
     def is_valid(self, instance: _Any) -> bool:
         return self._validator(instance, [])[0]

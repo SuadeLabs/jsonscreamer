@@ -1,9 +1,11 @@
+from unittest import mock
+
 from jsonscreamer.logical import all_of, any_of, not_, one_of
 
 
 def test_not():
-    assert not_({"not": False}, True)("spam", [])[0] is True
-    assert not_({"not": True}, True)("spam", [])[0] is False
+    assert not_({"not": False}, mock.Mock())("spam", [])[0] is True
+    assert not_({"not": True}, mock.Mock())("spam", [])[0] is False
 
 
 def test_all_of():
@@ -15,7 +17,7 @@ def test_all_of():
                 True,
             ],
         },
-        record_path=True,
+        mock.Mock(),
     )
 
     assert validator("alice@bob.com", [])[0]
@@ -32,7 +34,7 @@ def test_any_of():
                 False,
             ]
         },
-        record_path=True,
+        mock.Mock(),
     )
 
     assert validator("42", [])[0]
@@ -48,7 +50,7 @@ def test_one_of():
                 {"required": ["eggs"]},
             ]
         },
-        record_path=True,
+        mock.Mock(),
     )
 
     assert validator({"spam": 42}, [])[0]

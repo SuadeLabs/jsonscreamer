@@ -1,13 +1,13 @@
 """Logical combinators and modifiers of schemas."""
 
 from ._types import _Schema, _Validator, _Error
-from .compile import compile_ as _compile
+from .compile import compile_one as _compile
 from .compile import register as _register
 
 
 @_register
-def not_(defn: _Schema, record_path: bool) -> _Validator:
-    validator = _compile(defn["not"], record_path)
+def not_(defn: _Schema, tracker) -> _Validator:
+    validator = _compile(defn["not"], tracker)
 
     def validate(x, path):
         if not validator(x, path)[0]:
@@ -18,8 +18,8 @@ def not_(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def all_of(defn: _Schema, record_path: bool) -> _Validator:
-    validators = [_compile(s, record_path) for s in defn["allOf"]]
+def all_of(defn: _Schema, tracker) -> _Validator:
+    validators = [_compile(s, tracker) for s in defn["allOf"]]
 
     def validate(x, path):
         for v in validators:
@@ -33,8 +33,8 @@ def all_of(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def any_of(defn: _Schema, record_path: bool) -> _Validator:
-    validators = [_compile(s, record_path=False) for s in defn["anyOf"]]
+def any_of(defn: _Schema, tracker) -> _Validator:
+    validators = [_compile(s, tracker) for s in defn["anyOf"]]
 
     def validate(x, path):
         for v in validators:
@@ -47,8 +47,8 @@ def any_of(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def one_of(defn: _Schema, record_path: bool) -> _Validator:
-    validators = [_compile(s, record_path=False) for s in defn["oneOf"]]
+def one_of(defn: _Schema, tracker) -> _Validator:
+    validators = [_compile(s, tracker) for s in defn["oneOf"]]
 
     def validate(x, path):
         passed = 0
@@ -66,7 +66,7 @@ def one_of(defn: _Schema, record_path: bool) -> _Validator:
 
 
 @_register
-def if_(defn: _Schema, record_path: bool) -> _Validator | None:
+def if_(defn: _Schema, tracker) -> _Validator | None:
     if_schema = defn["if"]
     then_schema = defn.get("then", True)
     else_schema = defn.get("else", True)
@@ -74,9 +74,9 @@ def if_(defn: _Schema, record_path: bool) -> _Validator | None:
     if then_schema is True and else_schema is True:
         return None
 
-    if_validator = _compile(if_schema, record_path=False)
-    then_validator = _compile(then_schema, record_path=False)
-    else_validator = _compile(else_schema, record_path=False)
+    if_validator = _compile(if_schema, tracker)
+    then_validator = _compile(then_schema, tracker)
+    else_validator = _compile(else_schema, tracker)
 
     def validate(x, path):
         if if_validator(x, path)[0]:

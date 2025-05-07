@@ -2,6 +2,7 @@ import time
 import pytest
 
 from jsonscreamer.compile import compile_
+from jsonscreamer.resolve import RefTracker
 from jsonscreamer import Validator
 
 POST_BODY = {
@@ -60,7 +61,7 @@ SCHEMA = {
 
 
 def test_complex():
-    validator = compile_(SCHEMA, record_path=True)
+    validator = compile_(SCHEMA, RefTracker(SCHEMA))
 
     assert not validator("fish", [])[0]
     assert not validator({}, [])[0]
@@ -70,22 +71,33 @@ def test_complex():
 
 
 @pytest.mark.parametrize(
-    "variant,record_path",
+    "variant",
     (
-        ("old", True),
-        ("new", True),
-        ("new", False),
+        "jsonschema",
+        "jsonscreamer",
+        "fastjsonschema",
     ),
 )
-def test_validate(variant: str, record_path: bool):
-    if variant == "new":
-        validator = Validator(SCHEMA, record_path=record_path)
-    else:
+def test_validate(variant: str):
+    if variant == "jsonscreamer":
+        validator = Validator(SCHEMA)
+    elif variant == "jsonschema":
         from jsonschema import Draft7Validator
-
         Draft7Validator.check_schema(SCHEMA)
 
         validator = Draft7Validator(SCHEMA)
+    else:
+        import fastjsonschema
+        fjs_validator = fastjsonschema.compile(SCHEMA)
+
+        class validator:
+            @classmethod
+            def is_valid(cls, item):
+                try:
+                    fjs_validator(item)
+                    return True
+                except Exception:
+                    return False
 
     t0 = time.monotonic()
     for _ in range(10_000):
