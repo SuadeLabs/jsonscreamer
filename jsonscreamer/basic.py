@@ -53,11 +53,24 @@ class _StrictBool:
         return hash(self.value)
 
     def __eq__(self, other):
-        # TODO: make more efficient
-        return self.value is other or (
-            self.value == other
-            and not isinstance(self.value, bool)
-            and not isinstance(other, bool)
+        return (
+            self.value is other
+            or (
+                self.value == other
+                and not isinstance(self.value, bool)
+                and not isinstance(other, bool)
+            )
+            or (
+                isinstance(other, self.__class__)
+                and (
+                    self.value is other.value
+                    or (
+                        self.value == other.value
+                        and not isinstance(self.value, bool)
+                        and not isinstance(other.value, bool)
+                    )
+                )
+            )
         )
 
     __req__ = __eq__

@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 
 from jsonscreamer.basic import (
+    _StrictBool,
     const,
     enum,
     exclusive_maximum,
@@ -180,3 +181,32 @@ def test_format():
     defn = {"type": "string", "format": "oops"}
     validator = format_(defn, mock.Mock())
     assert validator("literally anything", [])[0]
+
+
+@pytest.mark.parametrize("wrap_testcase", (True, False))
+@pytest.mark.parametrize("wrapped,testcase,equal", (
+    (True, True, True),
+    (True, False, False),
+    (True, 1, False),
+    (True, 0, False),
+    (False, False, True),
+    (False, 0, False),
+    (1, 1, True),
+    (1, True, False),
+    (1, 5, False),
+    (0, 0, True),
+    (0, False, False),
+    (0, True, False),
+    (0, 1, False),
+
+))
+def test_strict_bool(wrapped, testcase, equal, wrap_testcase):
+    if wrap_testcase:
+        testcase = _StrictBool(testcase)
+
+    if equal:
+        assert _StrictBool(wrapped) == testcase
+        assert len({_StrictBool(wrapped), testcase}) == 1
+    else:
+        assert _StrictBool(wrapped) != testcase
+        assert len({_StrictBool(wrapped), testcase}) == 2
