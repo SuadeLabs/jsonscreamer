@@ -162,7 +162,7 @@ def max_contains(defn: _Schema, tracker) -> _Optional[_Validator]:
             path, f"{x} contains more than {value} items satisfying the condition"
         )
 
-    return validator
+    return validate
 
 
 @_register
