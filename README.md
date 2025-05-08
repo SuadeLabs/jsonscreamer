@@ -1,11 +1,9 @@
-# Json Screamer
-
----
 ![Build Status](https://github.com/SuadeLabs/jsonscreamer/actions/workflows/ci-pipeline.yml/badge.svg)
 ![MIT License](https://img.shields.io/badge/LICENSE-MIT-yellow.svg)
 ![PyPI](https://img.shields.io/pypi/v/jsonscreamer.svg)
 ![Pythons](https://img.shields.io/pypi/pyversions/jsonscreamer.svg)
 
+![logo-jsonscreamer](https://repository-images.githubusercontent.com/979927857/0a75e558-981a-4d73-8f11-f35f0492e6fe)
 
 Json Screamer is a fast JSON Schema validation library built with a few goals in mind:
 
