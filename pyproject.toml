@@ -7,7 +7,7 @@ name = "jsonscreamer"
 version = "0.1.0"
 authors = [{ name = "Oliver Margetts" }]
 description = "fast json schema validator"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 classifiers = [
   "Intended Audience :: Developers",
