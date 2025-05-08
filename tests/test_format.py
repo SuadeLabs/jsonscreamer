@@ -158,6 +158,6 @@ def test_format_lookup():
 def test_tests():
     # A meta-test to test we're testing all of the formats
     for func in format.FORMATS.values():
-        assert _TEST_CASES.get(
-            func.__name__
-        ), f"You need to write a test for {func.__name__}"
+        assert _TEST_CASES.get(func.__name__), (
+            f"You need to write a test for {func.__name__}"
+        )

@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-from typing import (
-    Any as _Any,
-    Callable as _Callable,
-    Dict as _Dict,
-    NamedTuple,
-    Optional as _Optional,
-    Tuple as _Tuple,
-)
+from collections.abc import Callable as _Callable
+from typing import Any as _Any, NamedTuple, Protocol
+
+from .resolve import RefTracker
 
 
 class _Error(NamedTuple):
@@ -16,10 +12,14 @@ class _Error(NamedTuple):
     type: str = ""
 
 
-_Schema = _Dict[str, _Any]
-_Result = _Tuple[bool, _Optional[_Error]]
-_Validator = _Callable[[_Any, list[str | int]], _Result]
-_Compiler = _Callable[[_Schema, bool], _Optional[_Validator]]
+_Json = bool | int | float | str | list["_Json"] | dict[str, "_Json"]
+_Path = list[str | int]
+_Schema = dict[str, _Any]
+_Result = tuple[bool, _Error | None]
 
 
-__all__ = ["_Compiler", "_Result", "_Schema", "_Validator"]
+class _Validator(Protocol):
+    def __call__(self, x: _Json, path: _Path) -> _Result: ...
+
+
+_Compiler = _Callable[[_Schema, RefTracker], _Validator | None]

@@ -23,8 +23,9 @@ def _enumerate_test_cases():
             yield pytest.param(test_case, id=test_case["description"])
 
 
+@pytest.mark.usefixtures("_remote_ref_server")
 @pytest.mark.parametrize("test_case", _enumerate_test_cases())
-def test_draft7(test_case,  _remote_ref_server: None):
+def test_draft7(test_case):
     print(test_case["description"])
     schema = test_case["schema"]
     validator = Validator(schema)

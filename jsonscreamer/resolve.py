@@ -4,10 +4,12 @@ We do this when we parse the schema and cache the results.
 This code is
 
 """
+
 from __future__ import annotations
 
 import contextlib
 import urllib.parse as urlparse
+from typing import TYPE_CHECKING
 
 from fastjsonschema.ref_resolver import (
     RefResolver as _FastRefResolver,
@@ -16,6 +18,9 @@ from fastjsonschema.ref_resolver import (
     resolve_path,
     resolve_remote,
 )
+
+if TYPE_CHECKING:
+    from ._types import _Schema
 
 
 class RefTracker:
@@ -32,7 +37,9 @@ class RefTracker:
         self._picked = set()
         self.compiled = {}
 
-        self._resolver = resolver or RefResolver.from_schema(schema, store={}, handlers=HANDLERS)
+        self._resolver = resolver or RefResolver.from_schema(
+            schema, store={}, handlers=HANDLERS
+        )
 
         # Kick off the compilation with top-level function
         self._queued.append(self._resolver.get_uri())
@@ -60,7 +67,7 @@ class RefTracker:
 def request_handler(uri):
     import requests
 
-    resp = requests.get(uri)
+    resp = requests.get(uri, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
@@ -76,12 +83,18 @@ class RefResolver(_FastRefResolver):
     with some compatibility hacks. See:
         https://github.com/horejsek/python-fastjsonschema
     """
+
     _TRAVERSE_ARBITRARY_KEYS = frozenset(("definitions", "properties"))
 
     def __init__(self, base_uri, schema, store=..., cache=True, handlers=...):
         # XXX: import here must be deferred to prevent cyclic imports
         from .compile import _COMPILATION_FUNCTIONS
-        self._TRAVERSABLE_KEYS = frozenset(_COMPILATION_FUNCTIONS).union(("definitions",)).difference(("const", "enum"))
+
+        self._TRAVERSABLE_KEYS = (
+            frozenset(_COMPILATION_FUNCTIONS)
+            .union(("definitions",))
+            .difference(("const", "enum"))
+        )
 
         super().__init__(base_uri, schema, store, cache, handlers)
 
@@ -98,7 +111,7 @@ class RefResolver(_FastRefResolver):
 
         # TODO: edge case - fragments in ids - remove for later schemas
         if new_uri and new_uri in self.store:
-            schema = self.store[new_uri]
+            schema: _Schema = self.store[new_uri]
             fragment = ""
         elif uri and normalize(uri) in self.store:
             schema = self.store[normalize(uri)]
@@ -123,18 +136,24 @@ class RefResolver(_FastRefResolver):
         """
         if isinstance(node, bool):
             pass
-        elif '$ref' in node and isinstance(node['$ref'], str):
-            ref = node['$ref']
-            node['$ref'] = urlparse.urljoin(self.resolution_scope, ref)
-        elif ('$id' in node or 'id' in node) and isinstance(get_id(node), str):
+        elif "$ref" in node and isinstance(node["$ref"], str):
+            ref = node["$ref"]
+            node["$ref"] = urlparse.urljoin(self.resolution_scope, ref)
+        elif ("$id" in node or "id" in node) and isinstance(get_id(node), str):
             with self.in_scope(get_id(node)):
                 self.store[normalize(self.resolution_scope)] = node
                 # TODO: edge case - fragments in ids - remove for later schemas
                 self.store[self.resolution_scope] = node
                 for key, item in node.items():
-                    if isinstance(item, dict) and (arbitrary_keys or key in self._TRAVERSABLE_KEYS):
-                        self.walk(item, arbitrary_keys=key in self._TRAVERSE_ARBITRARY_KEYS)
+                    if isinstance(item, dict) and (
+                        arbitrary_keys or key in self._TRAVERSABLE_KEYS
+                    ):
+                        self.walk(
+                            item, arbitrary_keys=key in self._TRAVERSE_ARBITRARY_KEYS
+                        )
         else:
             for key, item in node.items():
-                if isinstance(item, dict) and (arbitrary_keys or key in self._TRAVERSABLE_KEYS):
+                if isinstance(item, dict) and (
+                    arbitrary_keys or key in self._TRAVERSABLE_KEYS
+                ):
                     self.walk(item, arbitrary_keys=key in self._TRAVERSE_ARBITRARY_KEYS)

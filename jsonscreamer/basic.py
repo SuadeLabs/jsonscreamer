@@ -7,16 +7,21 @@ def validate(value):
     return value in {"foo", "bar"}
 ```
 """
+
 from __future__ import annotations
 
 import logging as _logging
 import re as _re
-from collections.abc import Collection as _Collection
-from typing import Union as _Union
+from typing import TYPE_CHECKING
 
-from ._types import _Error, _Schema, _Validator
+from ._types import _Error
 from .compile import register as _register
 from .format import FORMATS as _FORMATS
+
+if TYPE_CHECKING:
+    from collections.abc import Collection as _Collection
+
+    from ._types import _Json, _Path, _Result, _Schema, _Validator
 
 _TYPE_CHECKERS = {
     "object": lambda x: isinstance(x, dict),
@@ -24,10 +29,8 @@ _TYPE_CHECKERS = {
     "string": lambda x: isinstance(x, str),
     "number": lambda x: (isinstance(x, (float, int)) and not isinstance(x, bool)),
     "integer": lambda x: (
-        isinstance(x, int)
-        and not isinstance(x, bool)
-        or isinstance(x, float)
-        and x == int(x)
+        (isinstance(x, int) and not isinstance(x, bool))
+        or (isinstance(x, float) and x == int(x))
     ),
     "boolean": lambda x: isinstance(x, bool),
     "null": lambda x: x is None,
@@ -40,14 +43,14 @@ class _StrictBool:
     Casting to this type will ensure that 0 != False, [0] != [False] etc.
     """
 
-    def __init__(self, value: _Union[int, float, bool]):
+    def __init__(self, value: float | bool):
         self.value = value
 
     def __str__(self):
         return str(self.value)
 
     def __repr__(self):
-        return f"<_StrictBool({repr(self.value)})>"
+        return f"<_StrictBool({self.value!r})>"
 
     def __hash__(self):
         return hash(self.value)
@@ -123,8 +126,8 @@ def type_(defn: _Schema, tracker) -> _Validator:
 
 
 def _min_len_validator(n: int) -> _Validator:
-    def validate(x, path):
-        if len(x) >= n:
+    def validate(x: _Json, path: _Path) -> _Result:
+        if len(x) >= n:  # type: ignore (assumption: sized object provided)
             return True, None
 
         return False, _Error(path, f"{x} is too short (min length {n})")
@@ -133,8 +136,8 @@ def _min_len_validator(n: int) -> _Validator:
 
 
 def _max_len_validator(n: int) -> _Validator:
-    def validate(x, path):
-        if len(x) <= n:
+    def validate(x: _Json, path: _Path) -> _Result:
+        if len(x) <= n:  # type: ignore (assumption: sized object provided)
             return True, None
 
         return False, _Error(path, f"{x} is too long (max length {n})")
@@ -143,21 +146,21 @@ def _max_len_validator(n: int) -> _Validator:
 
 
 @_register
-def min_length(defn: _Schema, tracker) -> _Validator:
+def min_length(defn: _Schema, tracker) -> _Validator | None:
     value: int = defn["minLength"]
     guard = _string_guard(defn)
     return guard(_min_len_validator(value))
 
 
 @_register
-def max_length(defn: _Schema, tracker) -> _Validator:
+def max_length(defn: _Schema, tracker) -> _Validator | None:
     value: int = defn["maxLength"]
     guard = _string_guard(defn)
     return guard(_max_len_validator(value))
 
 
 @_register
-def pattern(defn: _Schema, tracker) -> _Validator:
+def pattern(defn: _Schema, tracker) -> _Validator | None:
     value: str = defn["pattern"]
     rex = _re.compile(value)
 
@@ -201,7 +204,7 @@ def const(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def format_(defn: _Schema, tracker) -> _Validator:
+def format_(defn: _Schema, tracker) -> _Validator | None:
     value: str = defn["format"]
     if value in _FORMATS:
 
@@ -219,8 +222,8 @@ def format_(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def minimum(defn: _Schema, tracker) -> _Validator:
-    value: _Union[float, int] = defn["minimum"]
+def minimum(defn: _Schema, tracker) -> _Validator | None:
+    value: float | int = defn["minimum"]
 
     @_number_guard(defn)
     def validate(x, path):
@@ -232,8 +235,8 @@ def minimum(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def exclusive_minimum(defn: _Schema, tracker) -> _Validator:
-    value: _Union[float, int] = defn["exclusiveMinimum"]
+def exclusive_minimum(defn: _Schema, tracker) -> _Validator | None:
+    value: float | int = defn["exclusiveMinimum"]
 
     @_number_guard(defn)
     def validate(x, path):
@@ -245,8 +248,8 @@ def exclusive_minimum(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def maximum(defn: _Schema, tracker) -> _Validator:
-    value: _Union[float, int] = defn["maximum"]
+def maximum(defn: _Schema, tracker) -> _Validator | None:
+    value: float | int = defn["maximum"]
 
     @_number_guard(defn)
     def validate(x, path):
@@ -258,8 +261,8 @@ def maximum(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def exclusive_maximum(defn: _Schema, tracker) -> _Validator:
-    value: _Union[float, int] = defn["exclusiveMaximum"]
+def exclusive_maximum(defn: _Schema, tracker) -> _Validator | None:
+    value: float | int = defn["exclusiveMaximum"]
 
     @_number_guard(defn)
     def validate(x, path):
@@ -271,8 +274,8 @@ def exclusive_maximum(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def multiple_of(defn: _Schema, tracker) -> _Validator:
-    value: _Union[float, int] = defn["multipleOf"]
+def multiple_of(defn: _Schema, tracker) -> _Validator | None:
+    value: float | int = defn["multipleOf"]
 
     @_number_guard(defn)
     def validate(x, path):
@@ -304,8 +307,7 @@ def _build_guard(type_names: set[str], *python_types: type):
     """
 
     def guard(defn: _Schema):
-
-        def decorator(validator):
+        def decorator(validator: _Validator) -> _Validator | None:
             # makes no sense, skip the validator entirely
             if "type" in defn and (
                 (isinstance(defn["type"], str) and defn["type"] not in type_names)

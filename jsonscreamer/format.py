@@ -2,6 +2,7 @@
 
 Example: ...
 """
+
 from __future__ import annotations
 
 import ipaddress as _ipaddress
@@ -18,7 +19,11 @@ from fqdn import FQDN as _FQDN
 
 def is_date_time(x: str) -> bool:
     """Date-time, see RFC 3339, section 5.6"""
-    possible_formats = ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S")
+    possible_formats = (
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%dT%H:%M:%S",
+    )
 
     for format in possible_formats:
         try:
@@ -87,7 +92,7 @@ def is_uuid(x: str) -> bool:
 def is_hostname(x: str) -> bool:
     """ "Internet host name, see RFC 1034, section 3.1."""
     try:
-        return _FQDN(x).is_valid
+        return _FQDN(x).is_valid()
     except ValueError:
         return False
 
@@ -140,7 +145,7 @@ def is_iri_reference(x: str) -> bool:
 def is_json_pointer(x: str) -> bool:
     """A JSON pointer, see RFC 6901."""
     try:
-        return _jsonpointer.JsonPointer(x)
+        return bool(_jsonpointer.JsonPointer(x))
     except _jsonpointer.JsonPointerException:
         return False
 

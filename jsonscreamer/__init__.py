@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from typing import Any as _Any
+from typing import TYPE_CHECKING
 
 from . import array, basic, compile, logical, object_
-from ._types import _Schema
 from .resolve import RefTracker
+
+if TYPE_CHECKING:
+    from typing import Any as _Any
+
+    from ._types import _Schema
 
 
 class ValidationError(ValueError):
@@ -20,7 +24,7 @@ class Validator:
         >>> validator.validate(some_instance)
     """
 
-    def __init__(self, schema: _Schema = True):
+    def __init__(self, schema: _Schema | bool = True):
         self._tracker = RefTracker(schema)
 
         while self._tracker:

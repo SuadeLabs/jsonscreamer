@@ -84,23 +84,28 @@ def test_complex():
 def test_validate(variant: str):
     if variant == "jsonscreamer":
         validator = Validator(SCHEMA)
+
     elif variant == "jsonschema":
         from jsonschema import Draft7Validator
+
         Draft7Validator.check_schema(SCHEMA)
 
         validator = Draft7Validator(SCHEMA)
     else:
         import fastjsonschema
-        fjs_validator = fastjsonschema.compile(SCHEMA)
 
-        class validator:
-            @classmethod
-            def is_valid(cls, item):
+        class FastValidator:
+            def __init__(self):
+                self._validator = fastjsonschema.compile(SCHEMA)
+
+            def is_valid(self, item):
                 try:
-                    fjs_validator(item)
+                    self._validator(item)  # type: ignore
                     return True
                 except Exception:
                     return False
+
+        validator = FastValidator()
 
     t0 = time.monotonic()
     for _ in range(10_000):

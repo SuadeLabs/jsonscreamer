@@ -51,7 +51,7 @@ def test_validate_type(typename):
         {},
         [],
     ]:
-        result = validator(value, path=list("xy"))
+        result = validator(value, path=list("xy"))  # pyright: ignore[reportArgumentType]
 
         if isinstance(value, valid):
             assert result[0], f"{value} should be a valid {typename}"
@@ -69,6 +69,7 @@ def test_validate_type(typename):
 def test_min_max_length():
     defn = {"type": "string", "minLength": 3}
     validator = min_length(defn, mock.Mock())
+    assert validator
 
     assert not validator("fo", [])[0]
     assert validator("foo", [])[0]
@@ -76,6 +77,7 @@ def test_min_max_length():
 
     defn = {"type": "string", "maxLength": 3}
     validator = max_length(defn, mock.Mock())
+    assert validator
 
     assert validator("fo", [])[0]
     assert validator("foo", [])[0]
@@ -90,6 +92,7 @@ def test_pattern():
         "pattern": r"^([a-z]+)@([a-z]+)\.com$",
     }
     validator = pattern(defn, mock.Mock())
+    assert validator
 
     assert not validator("", [])[0]
     assert validator("foo@bar.com", [])[0]
@@ -100,6 +103,7 @@ def test_pattern():
 def test_min():
     defn = {"type": "number", "minimum": 3}
     validator = minimum(defn, mock.Mock())
+    assert validator
     assert not validator(0, [])[0]
     assert validator(3, [])[0]
     assert validator(5, [])[0]
@@ -108,6 +112,7 @@ def test_min():
 
     defn = {"type": "number", "exclusiveMinimum": 3}
     validator = exclusive_minimum(defn, mock.Mock())
+    assert validator
     assert not validator(0, [])[0]
     assert not validator(3, [])[0]
     assert validator(5, [])[0]
@@ -118,6 +123,7 @@ def test_min():
 def test_max():
     defn = {"type": "number", "maximum": 7}
     validator = maximum(defn, mock.Mock())
+    assert validator
     assert validator(0, [])[0]
     assert validator(3, [])[0]
     assert validator(5, [])[0]
@@ -126,6 +132,7 @@ def test_max():
 
     defn = {"type": "number", "exclusiveMaximum": 7}
     validator = exclusive_maximum(defn, mock.Mock())
+    assert validator
     assert validator(0, [])[0]
     assert validator(3, [])[0]
     assert validator(5, [])[0]
@@ -137,6 +144,7 @@ def test_multiple():
     defn = {"type": "number", "multipleOf": 3}
     validator = multiple_of(defn, mock.Mock())
 
+    assert validator
     assert validator(6, [])[0]
     assert not validator(1, [])[0]
     assert validator(-9, [])[0]
@@ -145,6 +153,7 @@ def test_multiple():
     defn = {"type": "number", "multipleOf": 3.14}
     validator = multiple_of(defn, mock.Mock())
 
+    assert validator
     assert validator(6.28, [])[0]
     assert not validator(1, [])[0]
     assert validator(-9.42, [])[0]
@@ -176,32 +185,36 @@ def test_format():
     defn = {"type": "string", "format": "date"}
     validator = format_(defn, mock.Mock())
 
+    assert validator
     assert validator("2020-01-01", [])[0]
     assert not validator("oops", [])[0]
 
     # Unkown format ignored
     defn = {"type": "string", "format": "oops"}
     validator = format_(defn, mock.Mock())
+    assert validator
     assert validator("literally anything", [])[0]
 
 
 @pytest.mark.parametrize("wrap_testcase", (True, False))
-@pytest.mark.parametrize("wrapped,testcase,equal", (
-    (True, True, True),
-    (True, False, False),
-    (True, 1, False),
-    (True, 0, False),
-    (False, False, True),
-    (False, 0, False),
-    (1, 1, True),
-    (1, True, False),
-    (1, 5, False),
-    (0, 0, True),
-    (0, False, False),
-    (0, True, False),
-    (0, 1, False),
-
-))
+@pytest.mark.parametrize(
+    "wrapped,testcase,equal",
+    (
+        (True, True, True),
+        (True, False, False),
+        (True, 1, False),
+        (True, 0, False),
+        (False, False, True),
+        (False, 0, False),
+        (1, 1, True),
+        (1, True, False),
+        (1, 5, False),
+        (0, 0, True),
+        (0, False, False),
+        (0, True, False),
+        (0, 1, False),
+    ),
+)
 def test_strict_bool(wrapped, testcase, equal, wrap_testcase):
     if wrap_testcase:
         testcase = _StrictBool(testcase)

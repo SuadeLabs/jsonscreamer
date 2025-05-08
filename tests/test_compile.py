@@ -4,7 +4,6 @@ from jsonscreamer.compile import _name_from_validator
 
 
 def test_name_from_validator() -> None:
-
     def not_():
         pass
 

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Callable as _Callable
-from typing import Dict as _Dict, TypeVar as _TypeVar
+from typing import TYPE_CHECKING
 
-from ._types import _Compiler, _Error, _Schema
-from .resolve import RefTracker
+from ._types import _Error
 
-_CT = _TypeVar("_CT", bound=_Compiler)
+if TYPE_CHECKING:
+    from collections.abc import Callable as _Callable
+    from typing import TypeVar as _TypeVar
 
-_COMPILATION_FUNCTIONS: _Dict[str, _Compiler] = {}
+    from ._types import _Compiler, _Schema
+    from .resolve import RefTracker
+
+    _CT = _TypeVar("_CT", bound=_Compiler)
+
+
+_COMPILATION_FUNCTIONS: dict[str, _Compiler] = {}
 
 
 def active_properties():
@@ -19,7 +25,6 @@ def register(validator: _CT) -> _CT:
     """Register a validator for compiling a given type."""
     _COMPILATION_FUNCTIONS[_name_from_validator(validator)] = validator
     return validator
-
 
 
 def compile_(defn: _Schema | bool, tracker: RefTracker):
@@ -52,7 +57,7 @@ def compile_(defn: _Schema | bool, tracker: RefTracker):
 
 
 def compile_ref(defn: _Schema, tracker: RefTracker):
-    with tracker._resolver.in_scope(defn['$ref']):
+    with tracker._resolver.in_scope(defn["$ref"]):
         uri = tracker._resolver.get_uri()
         if uri not in tracker._picked:
             tracker.queue(uri)

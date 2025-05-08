@@ -26,12 +26,12 @@ dev = [
   "pytest",
   "jsonschema",
   "ruff",
-  "mypy",
+  "pyright",
 ]
 
 [tool.ruff]
 line-length = 88
-target-version = "py39"
+target-version = "py310"
 
 ## File Selection
 force-exclude = true # don't check excluded files even if passed directly
@@ -48,26 +48,24 @@ select = [
   'F',      # pyflakes: F
   'B',      # flake8-bugbear: B
   'N',      # pep8-naming: N
+  'I',      # isort: I
   'ISC',    # flake8-implicit-str-concat: ISC
   # 'ANN',    # flake8-annotations: ANN
   'PYI',    # flake8-pyi: PYI
-  'PT',  # flake8-pytest-style: PT (Specifically pytest-raises-too-broad)
-  # 'UP006',
-  # 'UP037',  # pyupgrade: UP (Specifically non-pep585-annotation and quoted-annotation)
-  # 'UP026',  # pyupgrade: UP (Specifically unittest.mock)
-  'RUF013', # ruff: RUF (Specifically implicit-optional)
+  'PT',     # flake8-pytest-style: PT (Specifically pytest-raises-too-broad)
   'T10',    # flake8-debugger: T10
   'S',      # flake8-bandit: S
   'UP',     # pyupgrade: U
   'TC',     # flake8-type-checking
-  'RUF101', # redirected-noqa: https://docs.astral.sh/ruff/rules/redirected-noqa/
-  'RUF022', # unsorted-dunder-all: https://docs.astral.sh/ruff/rules/unsorted-dunder-all/
-  'RUF023', # unsorted-dunder-slots: https://docs.astral.sh/ruff/rules/unsorted-dunder-slots/
+  'RUF',    # ruff-specific: RUF
 ]
 ignore = [
   'E501',   # Line too long: https://beta.ruff.rs/docs/rules/line-too-long/
   'B905',   # Zip without strict flag
   'ANN401', # Annotated with `Any`: https://beta.ruff.rs/docs/rules/any-type/
+  'UP038',  # isinstance(x, a | b) is 2x slower than isinstance(x, (a, b))
+  'PT006',  # pytest prameters have lax types
+  'PT007',  # pytest prameters have lax types
 
   # The following rules are ignored for `ruff format`'s benefit
   # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
@@ -132,4 +130,45 @@ section-order = [
   "third-party",
   "first-party",
   "local-folder",
+]
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+
+# Used for better TypeForm support
+enableExperimentalFeatures  = true
+
+# Imports
+reportMissingTypeStubs = false
+
+## Comments
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportTypeCommentUsage = true
+
+## Container Inference
+# Use strict type assumptions when inferring the type of containers
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+
+## Decoraters
+reportUntypedFunctionDecorator = true
+reportUntypedClassDecorator = true
+
+## Unused
+reportUnusedClass = true
+reportUnusedVariable = true
+
+## Miscellaneous
+deprecateTypingAliases = true
+reportConstantRedefinition = "warning"
+reportUnhashable = true
+reportDeprecated = "warning"
+
+
+exclude = [
+  # Venv & Caches
+  '*venv',
+  '**/__pycache__',
 ]
