@@ -1,14 +1,34 @@
 # Json Screamer
 
-Json Screamer is a fast json schema validation library built with a few goals in mind:
+Json Screamer is a fast JSON Schema validation library built with a few goals in mind:
 
 1. fast - up to 10x faster than the de-facto standard [jsonschema](https://github.com/python-jsonschema/jsonschema) library
 2. correct - full compliance with the json schema test suite, except some gnarly `$ref` edge cases
 3. easy to maintain - pure python code, regular function calls etc.
 
-Currently it only handles the Draft 7 spec. If you want a more battle-tested and robust implementation, use [jsonschema](https://github.com/python-jsonschema/jsonschema). If you want an even faster implementation use [fastjsonschema](https://github.com/horejsek/python-fastjsonschema) (up to 2x quicker).
+Currently it only handles the Draft 7 spec. If you want a more battle-tested and robust implementation, use [jsonschema](https://github.com/python-jsonschema/jsonschema). If you want an even faster implementation use [fastjsonschema](https://github.com/horejsek/python-fastjsonschema) (up to 2x quicker). The jsonscreamer library sits somewhere in between: more correct than fastjsonschema (e.g. counting `[0, False]` as having unique items) and faster than jsonschema.
 
-Given that the above libraries exist, why use jsonscreamer? Well, if the idea of dynamically creating source code and calling `exec` on it makes you (or your security team) uncomfortable that's probably the main reason not to use fastjsonschema. For that reason, jsonscreamer should also be a bit easier to reason about, improve and maintain, since it's not a python code compiler, it's just python. We also aim to be a little more correct - for instance distinguishing between 0 and False when checking unique items in arrays.
+Our primary motivations for not using fastjsonschema were correctness, security and ability to customise by writing regular python code. If the idea of dynamically creating source code and calling `exec` on it makes you (or your security team) uncomfortable that's probably a big reason not to use fastjsonschema.
+
+
+## Benchmarks
+
+The small benchmark from our test suite gives the following numbers (under python3.11):
+
+| library | time | speedup |
+| --- | --- | --- |
+| jsonschema | 0.568s | 1.0x |
+| jsonscreamer | 0.056s | 10.1x |
+| fastjsonschema | 0.028s | 20.4x |
+
+In real-world usage with [large schemas](https://github.com/SuadeLabs/fire/blob/master/schemas/account.json) we've seen a 4x speedup over jsonschema and numbers are much closer to fastjsonschema:
+
+| library | throughput | speedup |
+| --- | --- | --- |
+| jsonschema | 3965it/s | 1.0x |
+| jsonscreamer | 16074it/s| 4.1x |
+| fastjsonschema | 20683it/s | 5.2x |
+
 
 ## Usage
 
@@ -29,40 +49,7 @@ instantiating the validator is expensive, whereas calling its methods is cheap.
 
 ## Test suite compliance
 
-For the Draft 7 schema test suite, we pass 210 out of 212 tests. We consider the two failures to be very niche cases to do with relative `$ref` resolution in the "definitions" section. We are currently more compliant than fastjsonschema, and for almost all real-world schemas this should be considered complete.
-
-## Design
-
-Under the hood, we follow a similar pattern to fastjsonschema in that there is a "compile" phase, where we define validators based on the schema. Naively, one might write a type validator like this:
-
-```python
-def validate_type(definition, item):
-    match definition["type"]:
-        case "array":
-            return isinstance(item, list)
-        case "object":
-            return isinstance(item, dict)
-        case "boolean":
-            return isinstance(item, bool)
-        ...
-```
-
-however, this means the majority of time validating is spent working out which validation to run on the item. Instead,
-we can move the determination of exactly which validation is required to an earlier step:
-
-```python
-def create_type_validator(definition):
-    match definition["type"]:
-        case "array":
-            return lambda item: isinstance(item, list)
-        case "object":
-            return lambda item: isinstance(item, dict)
-        case "boolean":
-            return lambda item: isinstance(item, bool)
-        ...
-```
-
-so that we create the validator from the definition and later just call it on our items without reference to the original schema.
+For the Draft 7 schema test suite, we pass **210** out of **212** tests. We consider the two failures to be very niche cases to do with relative `$ref` resolution in the "definitions" section. We are currently more compliant than fastjsonschema, and for almost all real-world schemas this should be considered complete.
 
 
 ## Roadmap
