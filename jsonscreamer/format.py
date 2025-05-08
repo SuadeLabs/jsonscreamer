@@ -92,7 +92,7 @@ def is_uuid(x: str) -> bool:
 def is_hostname(x: str) -> bool:
     """ "Internet host name, see RFC 1034, section 3.1."""
     try:
-        return _FQDN(x).is_valid()
+        return _FQDN(x).is_valid  # pyright: ignore[reportReturnType] (this is really a bool)
     except ValueError:
         return False
 
