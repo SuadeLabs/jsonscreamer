@@ -12,7 +12,7 @@ _Path = list[str | int]
 class ValidationError(ValueError):
     """Raised when an instance does not conform to the provided schema."""
 
-    def __init__(self, absolute_path: _Path, message: str, type: str = ""):
+    def __init__(self, absolute_path: _Path, message: str, type: str):
         self.absolute_path = absolute_path
         self.message = message
         self.type = type

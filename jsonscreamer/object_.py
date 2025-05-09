@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import functools
 import re as _re
 from typing import TYPE_CHECKING
 
 from ._types import ValidationError
-from .basic import _max_len_validator, _min_len_validator, _object_guard
+from .basic import _guard, _max_len_validator, _min_len_validator
 from .compile import compile_ as _compile, register as _register
 
 if TYPE_CHECKING:
@@ -16,18 +17,21 @@ if TYPE_CHECKING:
     _VT = _TypeVar("_VT")
 
 
+_object_guard = functools.partial(_guard, js_types={"object"}, py_types=dict)
+
+
 @_register
 def max_properties(defn: _Schema, tracker) -> _Validator | None:
     value: int = defn["maxProperties"]
     guard = _object_guard(defn)
-    return guard(_max_len_validator(value))
+    return guard(_max_len_validator(value, "maxProperties"))
 
 
 @_register
 def min_properties(defn: _Schema, tracker) -> _Validator | None:
     value: int = defn["minProperties"]
     guard = _object_guard(defn)
-    return guard(_min_len_validator(value))
+    return guard(_min_len_validator(value, "minProperties"))
 
 
 @_register
@@ -54,7 +58,7 @@ def required(defn: _Schema, tracker) -> _Validator | None:
         def validate(x, path):
             for v in value:
                 if v not in x:
-                    return False, ValidationError(path, f"{v} is a required property")
+                    return False, ValidationError(path, f"{v} is a required property", "required")
             return True, None
 
         return validate
@@ -93,6 +97,7 @@ def dependencies(defn: _Schema, tracker) -> _Validator | None:
                     return valid, ValidationError(
                         path,
                         f"dependency for {dependent} not satisfied: {error.message}",
+                        "dependencies",
                     )
 
         return True, None

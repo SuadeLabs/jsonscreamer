@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING
 
 from ._types import ValidationError
 from .basic import (
-    _array_guard,
+    _guard,
     _max_len_validator,
     _min_len_validator,
     _strict_bool_nested,
@@ -20,18 +21,21 @@ if TYPE_CHECKING:
     _T = _TypeVar("_T")
 
 
+_array_guard = functools.partial(_guard, js_types={"array"}, py_types=list)
+
+
 @_register
 def min_items(defn: _Schema, tracker) -> _Validator | None:
     value: int = defn["minItems"]
     guard = _array_guard(defn)
-    return guard(_min_len_validator(value))
+    return guard(_min_len_validator(value, "minItems"))
 
 
 @_register
 def max_items(defn: _Schema, tracker) -> _Validator | None:
     value: int = defn["maxItems"]
     guard = _array_guard(defn)
-    return guard(_max_len_validator(value))
+    return guard(_max_len_validator(value, "maxItems"))
 
 
 def _unique_checker(
@@ -58,7 +62,7 @@ def _unique_checker(
         # checking this false positive will be slower..
         result, _ = _unique_checker(x, path, _second_run=True)
 
-    error = None if result else ValidationError(path, f"{x} has repeated items")
+    error = None if result else ValidationError(path, f"{x} has repeated items", "uniqueItems")
     return result, error
 
 
@@ -145,7 +149,7 @@ def contains(defn: _Schema, tracker) -> _Validator | None:
                 return True, None
 
         return False, ValidationError(
-            path, f"{x} did not contain any items satisfying the condition"
+            path, f"{x} did not contain any items satisfying {defn['contains']}", "contains"
         )
 
     return validate
@@ -166,7 +170,7 @@ def max_contains(defn: _Schema, tracker) -> _Validator | None:
             return True, None
 
         return False, ValidationError(
-            path, f"{x} contains more than {value} items satisfying the condition"
+            path, f"{x} contains more than {value} items satisfying {defn['contains']}", "maxContains"
         )
 
     return validate
@@ -187,7 +191,7 @@ def min_contains(defn: _Schema, tracker) -> _Validator | None:
             return True, None
 
         return False, ValidationError(
-            path, f"{x} contains less than {value} items satisfying the condition"
+            path, f"{x} contains less than {value} items satisfying {defn['contains']}", "minContains"
         )
 
     return validate

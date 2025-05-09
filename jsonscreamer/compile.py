@@ -82,4 +82,4 @@ def _true(x, path):
 
 
 def _false(x, path):
-    return False, ValidationError(path, "cannot satisfy the false schema")
+    return False, ValidationError(path, f"{x} cannot satisfy false", "false")

@@ -18,8 +18,9 @@ def not_(defn: _Schema, tracker) -> _Validator:
     def validate(x, path):
         if not validator(x, path)[0]:
             return True, None
+
         return False, ValidationError(
-            path, f"{x} should not satisfy the nested condition"
+            path, f"{x} should not satisfy {defn['not']}", "not"
         )
 
     return validate
@@ -45,11 +46,15 @@ def any_of(defn: _Schema, tracker) -> _Validator:
     validators = [_compile(s, tracker) for s in defn["anyOf"]]
 
     def validate(x, path):
+        messages = []
         for v in validators:
-            if v(x, path)[0]:
+            _, err = v(x, path)
+            if err is None:
                 return True, None
+            messages.append(err.message)
 
-        return False, ValidationError(path, f"{x} satisfied none of the conditions")
+        failures = ", ".join(messages)
+        return False, ValidationError(path, f"{x} failed all conditions: {failures}", "anyOf")
 
     return validate
 
@@ -62,14 +67,15 @@ def one_of(defn: _Schema, tracker) -> _Validator:
         passed = 0
 
         for v in validators:
-            if v(x, path)[0]:
+            _, err = v(x, path)
+            if err is None:
                 passed += 1
 
         if passed == 1:
             return True, None
 
         return False, ValidationError(
-            path, f"{x} satisfied {passed} of the oneOf conditions"
+            path, f"{x} satisfied {passed} (!= 1) of the conditions", "oneOf"
         )
 
     return validate
