@@ -48,10 +48,9 @@ def compile_(defn: _Schema | bool, tracker: RefTracker):
 
         def validate(x, path):
             for v in validators:
-                result = v(x, path)
-                if not result[0]:
-                    return result
-            return True, None
+                maybe_err = v(x, path)
+                if maybe_err:
+                    return maybe_err
 
     return validate
 
@@ -78,8 +77,8 @@ def _name_from_validator(validator: _Callable) -> str:
 
 
 def _true(x, path):
-    return True, None
+    return None
 
 
 def _false(x, path):
-    return False, ValidationError(path, f"{x} cannot satisfy false", "false")
+    return ValidationError(path, f"{x} cannot satisfy false", "false")

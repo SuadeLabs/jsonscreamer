@@ -19,7 +19,7 @@ class ValidationError(ValueError):
 
 
 _Schema = dict[str, _Any]
-_Result = tuple[bool, ValidationError | None]
+_Result = ValidationError | None
 
 
 class _Validator(Protocol):

@@ -31,10 +31,10 @@ class Validator:
         self._validator = self._tracker.entrypoint
 
     def is_valid(self, instance: _Any) -> bool:
-        return self._validator(instance, [])[0]
+        return not self._validator(instance, [])
 
     def validate(self, instance: _Any) -> None:
-        _, err = self._validator(instance, [])
+        err = self._validator(instance, [])
         if err is not None:
             # I didn't set out to write go-like python, but it turns out
             # errors as return values are just neater in this context

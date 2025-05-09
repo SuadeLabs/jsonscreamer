@@ -66,11 +66,11 @@ SCHEMA = {
 def test_complex():
     validator = compile_(SCHEMA, RefTracker(SCHEMA))
 
-    assert not validator("fish", [])[0]
-    assert not validator({}, [])[0]
-    assert validator(POST_BODY, [])[0]
-    assert not validator({**POST_BODY, "name": 3}, [])[0]
-    assert not validator({**POST_BODY, "category": {"name": "fish"}}, [])[0]
+    assert validator("fish", []) is not None
+    assert validator({}, []) is not None
+    assert validator(POST_BODY, []) is None
+    assert validator({**POST_BODY, "name": 3}, []) is not None
+    assert validator({**POST_BODY, "category": {"name": "fish"}}, []) is not None
 
 
 @pytest.mark.parametrize(

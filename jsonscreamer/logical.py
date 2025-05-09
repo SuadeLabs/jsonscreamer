@@ -16,12 +16,8 @@ def not_(defn: _Schema, tracker) -> _Validator:
     validator = _compile(defn["not"], tracker)
 
     def validate(x, path):
-        if not validator(x, path)[0]:
-            return True, None
-
-        return False, ValidationError(
-            path, f"{x} should not satisfy {defn['not']}", "not"
-        )
+        if not validator(x, path):
+            return ValidationError(path, f"{x} should not satisfy {defn['not']}", "not")
 
     return validate
 
@@ -32,11 +28,9 @@ def all_of(defn: _Schema, tracker) -> _Validator:
 
     def validate(x, path):
         for v in validators:
-            result = v(x, path)
-            if not result[0]:
-                return result
-
-        return True, None
+            err = v(x, path)
+            if err:
+                return err
 
     return validate
 
@@ -48,13 +42,13 @@ def any_of(defn: _Schema, tracker) -> _Validator:
     def validate(x, path):
         messages = []
         for v in validators:
-            _, err = v(x, path)
+            err = v(x, path)
             if err is None:
-                return True, None
+                return None
             messages.append(err.message)
 
         failures = ", ".join(messages)
-        return False, ValidationError(path, f"{x} failed all conditions: {failures}", "anyOf")
+        return ValidationError(path, f"{x} failed all conditions: {failures}", "anyOf")
 
     return validate
 
@@ -67,16 +61,14 @@ def one_of(defn: _Schema, tracker) -> _Validator:
         passed = 0
 
         for v in validators:
-            _, err = v(x, path)
+            err = v(x, path)
             if err is None:
                 passed += 1
 
-        if passed == 1:
-            return True, None
-
-        return False, ValidationError(
-            path, f"{x} satisfied {passed} (!= 1) of the conditions", "oneOf"
-        )
+        if passed != 1:
+            return ValidationError(
+                path, f"{x} satisfied {passed} (!= 1) of the conditions", "oneOf"
+            )
 
     return validate
 
@@ -95,7 +87,7 @@ def if_(defn: _Schema, tracker) -> _Validator | None:
     else_validator = _compile(else_schema, tracker)
 
     def validate(x, path):
-        if if_validator(x, path)[0]:
+        if not if_validator(x, path):  # XXX: no errors => if condition true
             return then_validator(x, path)
         return else_validator(x, path)
 

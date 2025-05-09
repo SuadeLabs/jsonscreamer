@@ -54,16 +54,16 @@ def test_validate_type(typename):
         result = validator(value, path=list("xy"))  # pyright: ignore[reportArgumentType]
 
         if isinstance(value, valid):
-            assert result[0], f"{value} should be a valid {typename}"
+            assert result is None, f"{value} should be a valid {typename}"
         else:
-            assert not result[0], f"{value} should not be a valid {typename}"
+            assert result is not None, f"{value} should not be a valid {typename}"
 
     for value in (True, False):
         result = validator(value, path=list("xy"))
         if typename == "boolean":
-            assert result[0]
+            assert result is None
         else:
-            assert not result[0]
+            assert result is not None
 
 
 def test_min_max_length():
@@ -71,17 +71,17 @@ def test_min_max_length():
     validator = min_length(defn, mock.Mock())
     assert validator
 
-    assert not validator("fo", [])[0]
-    assert validator("foo", [])[0]
-    assert validator("fooooo", [])[0]
+    assert validator("fo", [])
+    assert validator("foo", []) is None
+    assert validator("fooooo", []) is None
 
     defn = {"type": "string", "maxLength": 3}
     validator = max_length(defn, mock.Mock())
     assert validator
 
-    assert validator("fo", [])[0]
-    assert validator("foo", [])[0]
-    assert not validator("fooooo", [])[0]
+    assert validator("fo", []) is None
+    assert validator("foo", []) is None
+    assert validator("fooooo", [])
 
 
 def test_pattern():
@@ -94,50 +94,50 @@ def test_pattern():
     validator = pattern(defn, mock.Mock())
     assert validator
 
-    assert not validator("", [])[0]
-    assert validator("foo@bar.com", [])[0]
-    assert not validator(" foo@bar.com", [])[0]
-    assert not validator("foo@bar.com etc", [])[0]
+    assert validator("", [])
+    assert validator("foo@bar.com", []) is None
+    assert validator(" foo@bar.com", [])
+    assert validator("foo@bar.com etc", [])
 
 
 def test_min():
     defn = {"type": "number", "minimum": 3}
     validator = minimum(defn, mock.Mock())
     assert validator
-    assert not validator(0, [])[0]
-    assert validator(3, [])[0]
-    assert validator(5, [])[0]
-    assert validator(7, [])[0]
-    assert validator(10, [])[0]
+    assert validator(0, [])
+    assert validator(3, []) is None
+    assert validator(5, []) is None
+    assert validator(7, []) is None
+    assert validator(10, []) is None
 
     defn = {"type": "number", "exclusiveMinimum": 3}
     validator = exclusive_minimum(defn, mock.Mock())
     assert validator
-    assert not validator(0, [])[0]
-    assert not validator(3, [])[0]
-    assert validator(5, [])[0]
-    assert validator(7, [])[0]
-    assert validator(10, [])[0]
+    assert validator(0, [])
+    assert validator(3, [])
+    assert validator(5, []) is None
+    assert validator(7, []) is None
+    assert validator(10, []) is None
 
 
 def test_max():
     defn = {"type": "number", "maximum": 7}
     validator = maximum(defn, mock.Mock())
     assert validator
-    assert validator(0, [])[0]
-    assert validator(3, [])[0]
-    assert validator(5, [])[0]
-    assert validator(7, [])[0]
-    assert not validator(10, [])[0]
+    assert validator(0, []) is None
+    assert validator(3, []) is None
+    assert validator(5, []) is None
+    assert validator(7, []) is None
+    assert validator(10, [])
 
     defn = {"type": "number", "exclusiveMaximum": 7}
     validator = exclusive_maximum(defn, mock.Mock())
     assert validator
-    assert validator(0, [])[0]
-    assert validator(3, [])[0]
-    assert validator(5, [])[0]
-    assert not validator(7, [])[0]
-    assert not validator(10, [])[0]
+    assert validator(0, []) is None
+    assert validator(3, []) is None
+    assert validator(5, []) is None
+    assert validator(7, [])
+    assert validator(10, [])
 
 
 def test_multiple():
@@ -145,40 +145,40 @@ def test_multiple():
     validator = multiple_of(defn, mock.Mock())
 
     assert validator
-    assert validator(6, [])[0]
-    assert not validator(1, [])[0]
-    assert validator(-9, [])[0]
-    assert not validator(-7, [])[0]
+    assert validator(6, []) is None
+    assert validator(1, [])
+    assert validator(-9, []) is None
+    assert validator(-7, [])
 
     defn = {"type": "number", "multipleOf": 3.14}
     validator = multiple_of(defn, mock.Mock())
 
     assert validator
-    assert validator(6.28, [])[0]
-    assert not validator(1, [])[0]
-    assert validator(-9.42, [])[0]
-    assert not validator(-7, [])[0]
+    assert validator(6.28, []) is None
+    assert validator(1, [])
+    assert validator(-9.42, []) is None
+    assert validator(-7, [])
 
 
 def test_enum():
     defn = {"type": "string", "enum": list("ab")}
     validator = enum(defn, mock.Mock())
 
-    assert validator("a", [])[0]
-    assert validator("b", [])[0]
-    assert not validator("c", [])[0]
+    assert validator("a", []) is None
+    assert validator("b", []) is None
+    assert validator("c", [])
 
 
 def test_const():
     defn = {"type": "string", "const": "a"}
     validator = const(defn, mock.Mock())
-    assert validator("a", [])[0]
-    assert not validator("b", [])[0]
+    assert validator("a", []) is None
+    assert validator("b", [])
 
     defn = {"type": "integer", "const": 3}
     validator = const(defn, mock.Mock())
-    assert validator(3, [])[0]
-    assert not validator(5, [])[0]
+    assert validator(3, []) is None
+    assert validator(5, [])
 
 
 def test_format():
@@ -186,8 +186,8 @@ def test_format():
     validator = format_(defn, mock.Mock())
 
     assert validator
-    assert validator("2020-01-01", [])[0]
-    assert not validator("oops", [])[0]
+    assert validator("2020-01-01", []) is None
+    assert validator("oops", [])
 
     # Unkown format ignored
     defn = {"type": "string", "format": "oops"}

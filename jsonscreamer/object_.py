@@ -41,10 +41,10 @@ def property_names(defn: _Schema, tracker) -> _Validator | None:
     @_object_guard(defn)
     def validate(x, path):
         for key in x:
-            result = validator(key, path)
-            if not result[0]:
-                return result
-        return True, None
+            err = validator(key, path)
+            if err:
+                return err
+        return None
 
     return validate
 
@@ -58,8 +58,10 @@ def required(defn: _Schema, tracker) -> _Validator | None:
         def validate(x, path):
             for v in value:
                 if v not in x:
-                    return False, ValidationError(path, f"{v} is a required property", "required")
-            return True, None
+                    return ValidationError(
+                        path, f"{v} is a required property", "required"
+                    )
+            return None
 
         return validate
 
@@ -92,15 +94,15 @@ def dependencies(defn: _Schema, tracker) -> _Validator | None:
     def validate(x, path):
         for dependent, checker in checkers.items():
             if dependent in x:
-                valid, error = checker(x, path)
-                if not valid:
-                    return valid, ValidationError(
+                err = checker(x, path)
+                if err:
+                    return ValidationError(
                         path,
-                        f"dependency for {dependent} not satisfied: {error.message}",
+                        f"dependency for {dependent} not satisfied: {err.message}",
                         "dependencies",
                     )
 
-        return True, None
+        return None
 
     return validate
 
@@ -126,11 +128,11 @@ def properties(defn: _Schema, tracker) -> _Validator | None:
     def validate(x: _Json, path: _Path) -> _Result:
         for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
             if k in validators:
-                result = validators[k](v, path)
-                if not result[0]:
-                    return result
+                err = validators[k](v, path)
+                if err:
+                    return err
 
-        return True, None
+        return None
 
     return validate
 
@@ -146,11 +148,11 @@ def pattern_properties(defn: _Schema, tracker) -> _Validator | None:
         for rex, val in validators:
             for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
                 if rex.search(k):
-                    result = val(v, path)
-                    if not result[0]:
-                        return result
+                    err = val(v, path)
+                    if err:
+                        return err
 
-        return True, None
+        return None
 
     return validate
 
@@ -170,10 +172,10 @@ def additional_properties(defn: _Schema, tracker) -> _Validator | None:
                 continue
             if any(r.match(k) for r in excluded_rexes):
                 continue
-            result = simple_validator(v, path)
-            if not result[0]:
-                return result
+            err = simple_validator(v, path)
+            if err:
+                return err
 
-        return True, None
+        return None
 
     return validate

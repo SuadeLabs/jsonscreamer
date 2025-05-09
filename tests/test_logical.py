@@ -6,8 +6,8 @@ from jsonscreamer.logical import all_of, any_of, not_, one_of
 
 
 def test_not():
-    assert not_({"not": False}, mock.Mock())("spam", [])[0] is True
-    assert not_({"not": True}, mock.Mock())("spam", [])[0] is False
+    assert not_({"not": False}, mock.Mock())("spam", []) is None
+    assert not_({"not": True}, mock.Mock())("spam", []) is not None
 
 
 def test_all_of():
@@ -22,9 +22,9 @@ def test_all_of():
         mock.Mock(),
     )
 
-    assert validator("alice@bob.com", [])[0]
-    assert not validator("alice", [])[0]
-    assert not validator(42, [])[0]
+    assert validator("alice@bob.com", []) is None
+    assert validator("alice", []) is not None
+    assert validator(42, []) is not None
 
 
 def test_any_of():
@@ -39,9 +39,9 @@ def test_any_of():
         mock.Mock(),
     )
 
-    assert validator("42", [])[0]
-    assert validator(42, [])[0]
-    assert not validator(True, [])[0]
+    assert validator("42", []) is None
+    assert validator(42, []) is None
+    assert validator(True, []) is not None
 
 
 def test_one_of():
@@ -55,7 +55,7 @@ def test_one_of():
         mock.Mock(),
     )
 
-    assert validator({"spam": 42}, [])[0]
-    assert validator({"eggs": 42}, [])[0]
-    assert not validator({"spam": 42, "eggs": 42}, [])[0]
-    assert not validator({}, [])[0]
+    assert validator({"spam": 42}, []) is None
+    assert validator({"eggs": 42}, []) is None
+    assert validator({"spam": 42, "eggs": 42}, []) is not None
+    assert validator({}, []) is not None
