@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ._types import _Error
+from ._types import ValidationError
 from .compile import compile_ as _compile, register as _register
 
 if TYPE_CHECKING:
@@ -18,7 +18,9 @@ def not_(defn: _Schema, tracker) -> _Validator:
     def validate(x, path):
         if not validator(x, path)[0]:
             return True, None
-        return False, _Error(path, f"{x} should not satisfy the nested condition")
+        return False, ValidationError(
+            path, f"{x} should not satisfy the nested condition"
+        )
 
     return validate
 
@@ -47,7 +49,7 @@ def any_of(defn: _Schema, tracker) -> _Validator:
             if v(x, path)[0]:
                 return True, None
 
-        return False, _Error(path, f"{x} satisfied none of the conditions")
+        return False, ValidationError(path, f"{x} satisfied none of the conditions")
 
     return validate
 
@@ -66,7 +68,9 @@ def one_of(defn: _Schema, tracker) -> _Validator:
         if passed == 1:
             return True, None
 
-        return False, _Error(path, f"{x} satisfied {passed} of the oneOf conditions")
+        return False, ValidationError(
+            path, f"{x} satisfied {passed} of the oneOf conditions"
+        )
 
     return validate
 

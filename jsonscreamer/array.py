@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ._types import _Error
+from ._types import ValidationError
 from .basic import (
     _array_guard,
     _max_len_validator,
@@ -58,7 +58,7 @@ def _unique_checker(
         # checking this false positive will be slower..
         result, _ = _unique_checker(x, path, _second_run=True)
 
-    error = None if result else _Error(path, f"{x} has repeated items")
+    error = None if result else ValidationError(path, f"{x} has repeated items")
     return result, error
 
 
@@ -117,7 +117,7 @@ def additional_items(defn: _Schema, tracker) -> _Validator | None:
     item_spec: dict | list = defn.get("items", {})
     if isinstance(item_spec, dict):
         # this is a no-op
-        return lambda x, path: (True, None)
+        return None
 
     offset = len(item_spec)
     validator = _compile(defn["additionalItems"], tracker)
@@ -144,7 +144,7 @@ def contains(defn: _Schema, tracker) -> _Validator | None:
             if validator(i, path)[0]:
                 return True, None
 
-        return False, _Error(
+        return False, ValidationError(
             path, f"{x} did not contain any items satisfying the condition"
         )
 
@@ -161,11 +161,11 @@ def max_contains(defn: _Schema, tracker) -> _Validator | None:
 
     @_array_guard(defn)
     def validate(x: _Json, path: _Path) -> _Result:
-        total = sum(1 for i in x if validator(i, path)[0])  # type: ignore (guarded)
+        total = sum(validator(i, path)[0] for i in x)  # type: ignore (guarded)
         if total <= value:
             return True, None
 
-        return False, _Error(
+        return False, ValidationError(
             path, f"{x} contains more than {value} items satisfying the condition"
         )
 
@@ -182,11 +182,11 @@ def min_contains(defn: _Schema, tracker) -> _Validator | None:
 
     @_array_guard(defn)
     def validate(x: _Json, path: _Path) -> _Result:
-        total = sum(1 for i in x if validator(i, path)[0])  # type: ignore (guarded)
+        total = sum(validator(i, path)[0] for i in x)  # type: ignore (guarded)
         if total >= value:
             return True, None
 
-        return False, _Error(
+        return False, ValidationError(
             path, f"{x} contains less than {value} items satisfying the condition"
         )
 

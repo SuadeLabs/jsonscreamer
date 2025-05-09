@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ._types import _Error
+from ._types import ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import Callable as _Callable
@@ -82,4 +82,4 @@ def _true(x, path):
 
 
 def _false(x, path):
-    return False, _Error(path, "cannot satisfy the false schema")
+    return False, ValidationError(path, "cannot satisfy the false schema")

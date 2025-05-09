@@ -3,7 +3,7 @@ from __future__ import annotations
 import re as _re
 from typing import TYPE_CHECKING
 
-from ._types import _Error
+from ._types import ValidationError
 from .basic import _max_len_validator, _min_len_validator, _object_guard
 from .compile import compile_ as _compile, register as _register
 
@@ -54,7 +54,7 @@ def required(defn: _Schema, tracker) -> _Validator | None:
         def validate(x, path):
             for v in value:
                 if v not in x:
-                    return False, _Error(path, f"{v} is a required property")
+                    return False, ValidationError(path, f"{v} is a required property")
             return True, None
 
         return validate
@@ -90,7 +90,7 @@ def dependencies(defn: _Schema, tracker) -> _Validator | None:
             if dependent in x:
                 valid, error = checker(x, path)
                 if not valid:
-                    return valid, _Error(
+                    return valid, ValidationError(
                         path,
                         f"dependency for {dependent} not satisfied: {error.message}",
                     )

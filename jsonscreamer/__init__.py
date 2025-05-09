@@ -11,10 +11,6 @@ if TYPE_CHECKING:
     from ._types import _Schema
 
 
-class ValidationError(ValueError):
-    """Raised when an instance does not conform to the provided schema."""
-
-
 class Validator:
     """Validates instances against a given schema.
 
@@ -38,9 +34,11 @@ class Validator:
         return self._validator(instance, [])[0]
 
     def validate(self, instance: _Any) -> None:
-        ok, err = self._validator(instance, [])
-        if not ok:
-            raise ValidationError(err)
+        _, err = self._validator(instance, [])
+        if err is not None:
+            # I didn't set out to write go-like python, but it turns out
+            # errors as return values are just neater in this context
+            raise err
 
 
 __all__ = ["Validator", "array", "basic", "compile", "logical", "object_"]

@@ -14,7 +14,7 @@ import logging as _logging
 import re as _re
 from typing import TYPE_CHECKING
 
-from ._types import _Error
+from ._types import ValidationError
 from .compile import register as _register
 from .format import FORMATS as _FORMATS
 
@@ -112,7 +112,7 @@ def type_(defn: _Schema, tracker) -> _Validator:
         def validate(x, path):
             if type_checker(x):
                 return True, None
-            return False, _Error(path, f"{x} is not of type '{required_type}'")
+            return False, ValidationError(path, f"{x} is not of type '{required_type}'")
 
     elif isinstance(required_type, list):
         type_checkers = [_TYPE_CHECKERS[v] for v in required_type]
@@ -120,7 +120,9 @@ def type_(defn: _Schema, tracker) -> _Validator:
         def validate(x, path):
             if any(t(x) for t in type_checkers):
                 return True, None
-            return False, _Error(path, f"{x} is not any of the types '{required_type}'")
+            return False, ValidationError(
+                path, f"{x} is not any of the types '{required_type}'"
+            )
 
     return validate
 
@@ -130,7 +132,7 @@ def _min_len_validator(n: int) -> _Validator:
         if len(x) >= n:  # type: ignore (assumption: sized object provided)
             return True, None
 
-        return False, _Error(path, f"{x} is too short (min length {n})")
+        return False, ValidationError(path, f"{x} is too short (min length {n})")
 
     return validate
 
@@ -140,7 +142,7 @@ def _max_len_validator(n: int) -> _Validator:
         if len(x) <= n:  # type: ignore (assumption: sized object provided)
             return True, None
 
-        return False, _Error(path, f"{x} is too long (max length {n})")
+        return False, ValidationError(path, f"{x} is too long (max length {n})")
 
     return validate
 
@@ -167,7 +169,9 @@ def pattern(defn: _Schema, tracker) -> _Validator | None:
     @_string_guard(defn)
     def validate(x, path):
         if not rex.search(x):
-            return False, _Error(path, f"'{x}' does not match pattern '{value}'")
+            return False, ValidationError(
+                path, f"'{x}' does not match pattern '{value}'"
+            )
         return True, None
 
     return validate
@@ -186,7 +190,7 @@ def enum(defn: _Schema, tracker) -> _Validator:
     def validate(x, path):
         if x in members:
             return True, None
-        return False, _Error(path, f"'{x}' is not one of {value}")
+        return False, ValidationError(path, f"'{x}' is not one of {value}")
 
     return validate
 
@@ -198,7 +202,7 @@ def const(defn: _Schema, tracker) -> _Validator:
     def validate(x, path):
         if x == value:
             return True, None
-        return False, _Error(path, f"{x} is not {value}")
+        return False, ValidationError(path, f"{x} is not {value}")
 
     return validate
 
@@ -213,12 +217,12 @@ def format_(defn: _Schema, tracker) -> _Validator | None:
             if _FORMATS[value](x):
                 return True, None
 
-            return False, _Error(path, f"{x} does not match format '{value}")
+            return False, ValidationError(path, f"{x} does not match format '{value}")
 
         return validate
 
     _logging.warning(f"Unsupported format ({value}) will not be checked")
-    return lambda x, path: (True, None)
+    return None
 
 
 @_register
@@ -228,7 +232,7 @@ def minimum(defn: _Schema, tracker) -> _Validator | None:
     @_number_guard(defn)
     def validate(x, path):
         if isinstance(x, (float, int)) and x < value:
-            return False, _Error(path, f"{x} < {value}")
+            return False, ValidationError(path, f"{x} < {value}")
         return True, None
 
     return validate
@@ -241,7 +245,7 @@ def exclusive_minimum(defn: _Schema, tracker) -> _Validator | None:
     @_number_guard(defn)
     def validate(x, path):
         if isinstance(x, (float, int)) and x <= value:
-            return False, _Error(path, f"{x} <= {value}")
+            return False, ValidationError(path, f"{x} <= {value}")
         return True, None
 
     return validate
@@ -254,7 +258,7 @@ def maximum(defn: _Schema, tracker) -> _Validator | None:
     @_number_guard(defn)
     def validate(x, path):
         if isinstance(x, (float, int)) and x > value:
-            return False, _Error(path, f"{x} > {value}")
+            return False, ValidationError(path, f"{x} > {value}")
         return True, None
 
     return validate
@@ -267,7 +271,7 @@ def exclusive_maximum(defn: _Schema, tracker) -> _Validator | None:
     @_number_guard(defn)
     def validate(x, path):
         if isinstance(x, (float, int)) and x >= value:
-            return False, _Error(path, f"{x} >= {value}")
+            return False, ValidationError(path, f"{x} >= {value}")
         return True, None
 
     return validate
@@ -285,9 +289,9 @@ def multiple_of(defn: _Schema, tracker) -> _Validator | None:
             if int(frac) == frac:
                 return True, None
         except OverflowError:
-            return False, _Error(path, f"{x} is not a multiple of {value}")
+            return False, ValidationError(path, f"{x} is not a multiple of {value}")
 
-        return False, _Error(path, f"{x} is not a multiple of {value}")
+        return False, ValidationError(path, f"{x} is not a multiple of {value}")
 
     return validate
 

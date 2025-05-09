@@ -192,8 +192,7 @@ def test_format():
     # Unkown format ignored
     defn = {"type": "string", "format": "oops"}
     validator = format_(defn, mock.Mock())
-    assert validator
-    assert validator("literally anything", [])[0]
+    assert validator is None
 
 
 @pytest.mark.parametrize("wrap_testcase", (True, False))
