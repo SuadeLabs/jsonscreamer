@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING
 
-from ._types import ValidationError
 from .basic import (
     _guard,
     _max_len_validator,
@@ -11,36 +10,37 @@ from .basic import (
     _strict_bool_nested,
 )
 from .compile import compile_ as _compile, register as _register
+from .types import ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable as _Iterable
-    from typing import TypeVar as _TypeVar
+    from collections.abc import Iterable
+    from typing import TypeVar
 
-    from ._types import _Json, _Path, _Result, _Schema, _Validator
+    from .types import Context, Json, Path, Result, Schema, Validator
 
-    _T = _TypeVar("_T")
+    _T = TypeVar("_T")
 
 
 _array_guard = functools.partial(_guard, js_types={"array"}, py_types=list)
 
 
 @_register
-def min_items(defn: _Schema, tracker) -> _Validator | None:
+def min_items(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["minItems"]
     guard = _array_guard(defn)
     return guard(_min_len_validator(value, "minItems"))
 
 
 @_register
-def max_items(defn: _Schema, tracker) -> _Validator | None:
+def max_items(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["maxItems"]
     guard = _array_guard(defn)
     return guard(_max_len_validator(value, "maxItems"))
 
 
 def _unique_checker(
-    x: _Json, path: list[str | int], _second_run: bool = False
-) -> _Result:
+    x: Json, path: list[str | int], _second_run: bool = False
+) -> Result:
     # Happy path first, then fall back to more expensive expressions
     if _second_run:
         x = _strict_bool_nested(x)  # type: ignore
@@ -68,15 +68,15 @@ def _unique_checker(
 
 
 @_register
-def unique_items(defn: _Schema, tracker) -> _Validator | None:
+def unique_items(defn: Schema, context: Context) -> Validator | None:
     if defn["uniqueItems"]:
         guard = _array_guard(defn)
         return guard(_unique_checker)
 
 
 def _path_push_iterator(
-    path: list[str | int], iterable: _Iterable[_T], offset: int = 0
-) -> _Iterable[_T]:
+    path: Path, iterable: Iterable[_T], offset: int = 0
+) -> Iterable[_T]:
     path.append(0)  # front-load memory allocation
     try:
         for ix, item in enumerate(iterable):
@@ -87,23 +87,23 @@ def _path_push_iterator(
 
 
 @_register
-def items(defn: _Schema, tracker) -> _Validator | None:
-    value: list[_Schema] | _Schema = defn["items"]
+def items(defn: Schema, context: Context) -> Validator | None:
+    value: list[Schema] | Schema = defn["items"]
     if isinstance(value, list):
-        validators = [_compile(d, tracker) for d in value]
+        validators = [_compile(d, context) for d in value]
 
         @_array_guard(defn)
-        def validate(x: _Json, path: _Path) -> _Result:
+        def validate(x: Json, path: Path) -> Result:
             for v, i in _path_push_iterator(path, zip(validators, x)):  # type: ignore[guarded]
                 err = v(i, path)
                 if err:
                     return err
 
     else:
-        validator = _compile(value, tracker)
+        validator = _compile(value, context)
 
         @_array_guard(defn)
-        def validate(x: _Json, path: _Path) -> _Result:
+        def validate(x: Json, path: Path) -> Result:
             for i in _path_push_iterator(path, x):  # type: ignore[guarded]
                 err = validator(i, path)
                 if err:
@@ -113,17 +113,17 @@ def items(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def additional_items(defn: _Schema, tracker) -> _Validator | None:
+def additional_items(defn: Schema, context: Context) -> Validator | None:
     item_spec: dict | list = defn.get("items", {})
     if isinstance(item_spec, dict):
         # this is a no-op
         return None
 
     offset = len(item_spec)
-    validator = _compile(defn["additionalItems"], tracker)
+    validator = _compile(defn["additionalItems"], context)
 
     @_array_guard(defn)
-    def validate(x: _Json, path: _Path) -> _Result:
+    def validate(x: Json, path: Path) -> Result:
         for i in _path_push_iterator(path, x[offset:], offset):  # type: ignore (guarded)
             err = validator(i, path)
             if err:
@@ -133,11 +133,11 @@ def additional_items(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def contains(defn: _Schema, tracker) -> _Validator | None:
-    validator = _compile(defn["contains"], tracker)
+def contains(defn: Schema, context: Context) -> Validator | None:
+    validator = _compile(defn["contains"], context)
 
     @_array_guard(defn)
-    def validate(x: _Json, path: _Path) -> _Result:
+    def validate(x: Json, path: Path) -> Result:
         for i in x:  # type: ignore (guarded)
             if not validator(i, path):  # XXX: no error => item is in list
                 return None
@@ -152,15 +152,15 @@ def contains(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def max_contains(defn: _Schema, tracker) -> _Validator | None:
+def max_contains(defn: Schema, context: Context) -> Validator | None:
     if "contains" not in defn:
         return None
 
-    validator = _compile(defn["contains"], tracker)
+    validator = _compile(defn["contains"], context)
     value: int = defn["maxContains"]
 
     @_array_guard(defn)
-    def validate(x: _Json, path: _Path) -> _Result:
+    def validate(x: Json, path: Path) -> Result:
         total = sum(not validator(i, path) for i in x)  # type: ignore (guarded)
         if total <= value:
             return None
@@ -175,15 +175,15 @@ def max_contains(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def min_contains(defn: _Schema, tracker) -> _Validator | None:
+def min_contains(defn: Schema, context: Context) -> Validator | None:
     if "contains" not in defn:
         return None
 
-    validator = _compile(defn["contains"], tracker)
+    validator = _compile(defn["contains"], context)
     value: int = defn["minContains"]
 
     @_array_guard(defn)
-    def validate(x: _Json, path: _Path) -> _Result:
+    def validate(x: Json, path: Path) -> Result:
         total = sum(not validator(i, path) for i in x)  # type: ignore (guarded)
         if total >= value:
             return None

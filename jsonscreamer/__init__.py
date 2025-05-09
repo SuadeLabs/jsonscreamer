@@ -3,12 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from . import array, basic, compile, logical, object_
-from .resolve import RefTracker
+from .format import FORMATS as _FORMATS
+from .resolve import RefTracker as _RefTracker
+from .types import Context as _Context
 
 if TYPE_CHECKING:
     from typing import Any as _Any
 
-    from ._types import _Schema
+    from .types import Format, Schema
 
 
 class Validator:
@@ -20,15 +22,19 @@ class Validator:
         >>> validator.validate(some_instance)
     """
 
-    def __init__(self, schema: _Schema | bool = True):
-        self._tracker = RefTracker(schema)
+    def __init__(
+        self, schema: Schema | bool = True, formats: dict[str, Format] | None = None
+    ):
+        formats = _FORMATS | (formats or {})
+        tracker = _RefTracker(schema)
+        self._context = _Context(formats=formats, tracker=tracker)
 
-        while self._tracker:
-            uri = self._tracker.pop()
-            with self._tracker._resolver.resolving(uri) as sub_defn:
-                self._tracker.compiled[uri] = compile.compile_(sub_defn, self._tracker)
+        while tracker:
+            uri = tracker.pop()
+            with tracker._resolver.resolving(uri) as sub_defn:
+                tracker.compiled[uri] = compile.compile_(sub_defn, self._context)
 
-        self._validator = self._tracker.entrypoint
+        self._validator = tracker.entrypoint
 
     def is_valid(self, instance: _Any) -> bool:
         return not self._validator(instance, [])

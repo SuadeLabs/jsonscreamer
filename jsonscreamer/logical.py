@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ._types import ValidationError
 from .compile import compile_ as _compile, register as _register
+from .types import ValidationError
 
 if TYPE_CHECKING:
-    from ._types import _Schema, _Validator
+    from .types import Context, Schema, Validator
 
 
 @_register
-def not_(defn: _Schema, tracker) -> _Validator:
-    validator = _compile(defn["not"], tracker)
+def not_(defn: Schema, context: Context) -> Validator:
+    validator = _compile(defn["not"], context)
 
     def validate(x, path):
         if not validator(x, path):
@@ -23,8 +23,8 @@ def not_(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def all_of(defn: _Schema, tracker) -> _Validator:
-    validators = [_compile(s, tracker) for s in defn["allOf"]]
+def all_of(defn: Schema, context: Context) -> Validator:
+    validators = [_compile(s, context) for s in defn["allOf"]]
 
     def validate(x, path):
         for v in validators:
@@ -36,8 +36,8 @@ def all_of(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def any_of(defn: _Schema, tracker) -> _Validator:
-    validators = [_compile(s, tracker) for s in defn["anyOf"]]
+def any_of(defn: Schema, context: Context) -> Validator:
+    validators = [_compile(s, context) for s in defn["anyOf"]]
 
     def validate(x, path):
         messages = []
@@ -54,8 +54,8 @@ def any_of(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def one_of(defn: _Schema, tracker) -> _Validator:
-    validators = [_compile(s, tracker) for s in defn["oneOf"]]
+def one_of(defn: Schema, context: Context) -> Validator:
+    validators = [_compile(s, context) for s in defn["oneOf"]]
 
     def validate(x, path):
         passed = 0
@@ -74,7 +74,7 @@ def one_of(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def if_(defn: _Schema, tracker) -> _Validator | None:
+def if_(defn: Schema, context: Context) -> Validator | None:
     if_schema = defn["if"]
     then_schema = defn.get("then", True)
     else_schema = defn.get("else", True)
@@ -82,9 +82,9 @@ def if_(defn: _Schema, tracker) -> _Validator | None:
     if then_schema is True and else_schema is True:
         return None
 
-    if_validator = _compile(if_schema, tracker)
-    then_validator = _compile(then_schema, tracker)
-    else_validator = _compile(else_schema, tracker)
+    if_validator = _compile(if_schema, context)
+    then_validator = _compile(then_schema, context)
+    else_validator = _compile(else_schema, context)
 
     def validate(x, path):
         if not if_validator(x, path):  # XXX: no errors => if condition true

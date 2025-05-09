@@ -5,6 +5,7 @@ from unittest import mock
 
 import pytest
 
+from jsonscreamer import Validator
 from jsonscreamer.basic import (
     _StrictBool,
     const,
@@ -20,6 +21,7 @@ from jsonscreamer.basic import (
     pattern,
     type_,
 )
+from jsonscreamer.format import FORMATS
 
 TYPENAMES = ("boolean", "integer", "null", "number", "string", "zzzzzz")
 _VALID = {
@@ -183,7 +185,7 @@ def test_const():
 
 def test_format():
     defn = {"type": "string", "format": "date"}
-    validator = format_(defn, mock.Mock())
+    validator = format_(defn, mock.Mock(formats=FORMATS))
 
     assert validator
     assert validator("2020-01-01", []) is None
@@ -191,8 +193,36 @@ def test_format():
 
     # Unkown format ignored
     defn = {"type": "string", "format": "oops"}
-    validator = format_(defn, mock.Mock())
+    validator = format_(defn, mock.Mock(formats=FORMATS))
     assert validator is None
+
+
+def test_format_overrides():
+    defn = {
+        "properties": {
+            "squishy": {"type": "string", "format": "squishy"},
+            "date": {"type": "string", "format": "date"},
+            "email": {"type": "string", "format": "email"},
+        }
+    }
+
+    def is_squishy(x: str) -> bool:
+        return "squishy" in x
+
+    validator = Validator(defn, formats={"date": is_squishy, "squishy": is_squishy})
+    # new format is respected
+    assert validator.is_valid({"squishy": "squishy!"})
+    assert not validator.is_valid({"squishy": "2020-01-01"})
+    # override is respected
+    assert validator.is_valid({"date": "squishy!"})
+    assert not validator.is_valid({"date": "2020-01-01"})
+    # other formats are retained
+    assert validator.is_valid({"email": "x@y.z"})
+    assert not validator.is_valid({"email": "squishy!"})
+
+    # override is not permanent
+    validator = Validator(defn)
+    assert validator.is_valid({"date": "2020-01-01"})
 
 
 @pytest.mark.parametrize("wrap_testcase", (True, False))

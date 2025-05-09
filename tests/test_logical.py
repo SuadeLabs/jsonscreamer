@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from unittest import mock
 
+from jsonscreamer.format import FORMATS
 from jsonscreamer.logical import all_of, any_of, not_, one_of
 
 
@@ -19,7 +20,7 @@ def test_all_of():
                 True,
             ],
         },
-        mock.Mock(),
+        mock.Mock(formats=FORMATS),
     )
 
     assert validator("alice@bob.com", []) is None

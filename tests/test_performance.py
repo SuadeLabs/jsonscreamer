@@ -7,6 +7,7 @@ import pytest
 from jsonscreamer import Validator
 from jsonscreamer.compile import compile_
 from jsonscreamer.resolve import RefTracker
+from jsonscreamer.types import Context
 
 POST_BODY = {
     "id": 0,
@@ -64,7 +65,7 @@ SCHEMA = {
 
 
 def test_complex():
-    validator = compile_(SCHEMA, RefTracker(SCHEMA))
+    validator = compile_(SCHEMA, Context({}, RefTracker(SCHEMA)))
 
     assert validator("fish", []) is not None
     assert validator({}, []) is not None

@@ -20,7 +20,7 @@ from fastjsonschema.ref_resolver import (
 )
 
 if TYPE_CHECKING:
-    from ._types import _Schema
+    from .types import Schema
 
 
 class RefTracker:
@@ -111,7 +111,7 @@ class RefResolver(_FastRefResolver):
 
         # TODO: edge case - fragments in ids - remove for later schemas
         if new_uri and new_uri in self.store:
-            schema: _Schema = self.store[new_uri]
+            schema: Schema = self.store[new_uri]
             fragment = ""
         elif uri and normalize(uri) in self.store:
             schema = self.store[normalize(uri)]

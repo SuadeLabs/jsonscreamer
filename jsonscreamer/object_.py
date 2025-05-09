@@ -4,15 +4,15 @@ import functools
 import re as _re
 from typing import TYPE_CHECKING
 
-from ._types import ValidationError
 from .basic import _guard, _max_len_validator, _min_len_validator
 from .compile import compile_ as _compile, register as _register
+from .types import ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import Iterable as _Iterable
     from typing import TypeVar as _TypeVar
 
-    from ._types import _Json, _Path, _Result, _Schema, _Validator
+    from .types import Context, Json, Path, Result, Schema, Validator
 
     _VT = _TypeVar("_VT")
 
@@ -21,22 +21,22 @@ _object_guard = functools.partial(_guard, js_types={"object"}, py_types=dict)
 
 
 @_register
-def max_properties(defn: _Schema, tracker) -> _Validator | None:
+def max_properties(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["maxProperties"]
     guard = _object_guard(defn)
     return guard(_max_len_validator(value, "maxProperties"))
 
 
 @_register
-def min_properties(defn: _Schema, tracker) -> _Validator | None:
+def min_properties(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["minProperties"]
     guard = _object_guard(defn)
     return guard(_min_len_validator(value, "minProperties"))
 
 
 @_register
-def property_names(defn: _Schema, tracker) -> _Validator | None:
-    validator = _compile(defn["propertyNames"], tracker)
+def property_names(defn: Schema, context: Context) -> Validator | None:
+    validator = _compile(defn["propertyNames"], context)
 
     @_object_guard(defn)
     def validate(x, path):
@@ -50,7 +50,7 @@ def property_names(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def required(defn: _Schema, tracker) -> _Validator | None:
+def required(defn: Schema, context: Context) -> Validator | None:
     value: list[str] = defn["required"]
     if value:
 
@@ -69,8 +69,8 @@ def required(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def dependencies(defn: _Schema, tracker) -> _Validator | None:
-    value: dict[str, list[str] | _Schema] = defn["dependencies"]
+def dependencies(defn: Schema, context: Context) -> Validator | None:
+    value: dict[str, list[str] | Schema] = defn["dependencies"]
     if not value:
         return None
 
@@ -83,9 +83,9 @@ def dependencies(defn: _Schema, tracker) -> _Validator | None:
             if "type" in defn:
                 fake_schema["type"] = defn["type"]
 
-            checker = required(fake_schema, tracker)
+            checker = required(fake_schema, context)
         else:
-            checker = _compile(requirement, tracker)
+            checker = _compile(requirement, context)
 
         if checker is not None:
             checkers[dependent] = checker
@@ -120,12 +120,12 @@ def _path_push_iterator(
 
 
 @_register
-def properties(defn: _Schema, tracker) -> _Validator | None:
+def properties(defn: Schema, context: Context) -> Validator | None:
     value = defn["properties"]
-    validators = {k: _compile(v, tracker) for k, v in value.items()}
+    validators = {k: _compile(v, context) for k, v in value.items()}
 
     @_object_guard(defn)
-    def validate(x: _Json, path: _Path) -> _Result:
+    def validate(x: Json, path: Path) -> Result:
         for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
             if k in validators:
                 err = validators[k](v, path)
@@ -138,12 +138,12 @@ def properties(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def pattern_properties(defn: _Schema, tracker) -> _Validator | None:
+def pattern_properties(defn: Schema, context: Context) -> Validator | None:
     value = defn["patternProperties"]
-    validators = [(_re.compile(k), _compile(v, tracker)) for k, v in value.items()]
+    validators = [(_re.compile(k), _compile(v, context)) for k, v in value.items()]
 
     @_object_guard(defn)
-    def validate(x: _Json, path: _Path) -> _Result:
+    def validate(x: Json, path: Path) -> Result:
         # ugh...
         for rex, val in validators:
             for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
@@ -158,15 +158,15 @@ def pattern_properties(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def additional_properties(defn: _Schema, tracker) -> _Validator | None:
+def additional_properties(defn: Schema, context: Context) -> Validator | None:
     value = defn["additionalProperties"]
-    simple_validator = _compile(value, tracker)
+    simple_validator = _compile(value, context)
 
     excluded_names = set(defn.get("properties", ()))
     excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties", ())]
 
     @_object_guard(defn)
-    def validate(x: _Json, path: _Path) -> _Result:
+    def validate(x: Json, path: Path) -> Result:
         for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
             if k in excluded_names:
                 continue

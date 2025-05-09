@@ -15,14 +15,13 @@ import logging as _logging
 import re as _re
 from typing import TYPE_CHECKING
 
-from ._types import ValidationError
 from .compile import register as _register
-from .format import FORMATS as _FORMATS
+from .types import ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import Collection as _Collection
+    from collections.abc import Collection
 
-    from ._types import _Json, _Path, _Result, _Schema, _Validator
+    from .types import Context, Json, Path, Result, Schema, Validator
 
 _TYPE_CHECKERS = {
     "object": lambda x: isinstance(x, dict),
@@ -104,7 +103,7 @@ def _strict_bool_nested(x):
 
 
 @_register
-def type_(defn: _Schema, tracker) -> _Validator:
+def type_(defn: Schema, context: Context) -> Validator:
     required_type: str | list[str] = defn["type"]
 
     if isinstance(required_type, str):
@@ -128,16 +127,16 @@ def type_(defn: _Schema, tracker) -> _Validator:
     return validate
 
 
-def _min_len_validator(n: int, kind: str) -> _Validator:
-    def validate(x: _Json, path: _Path) -> _Result:
+def _min_len_validator(n: int, kind: str) -> Validator:
+    def validate(x: Json, path: Path) -> Result:
         if len(x) < n:  # type: ignore (assumption: sized object provided)
             return ValidationError(path, f"{x} is too short (min length {n})", kind)
 
     return validate
 
 
-def _max_len_validator(n: int, kind: str) -> _Validator:
-    def validate(x: _Json, path: _Path) -> _Result:
+def _max_len_validator(n: int, kind: str) -> Validator:
+    def validate(x: Json, path: Path) -> Result:
         if len(x) > n:  # type: ignore (assumption: sized object provided)
             return ValidationError(path, f"{x} is too long (max length {n})", kind)
 
@@ -145,21 +144,21 @@ def _max_len_validator(n: int, kind: str) -> _Validator:
 
 
 @_register
-def min_length(defn: _Schema, tracker) -> _Validator | None:
+def min_length(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["minLength"]
     guard = _string_guard(defn)
     return guard(_min_len_validator(value, "minLength"))
 
 
 @_register
-def max_length(defn: _Schema, tracker) -> _Validator | None:
+def max_length(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["maxLength"]
     guard = _string_guard(defn)
     return guard(_max_len_validator(value, "maxLength"))
 
 
 @_register
-def pattern(defn: _Schema, tracker) -> _Validator | None:
+def pattern(defn: Schema, context: Context) -> Validator | None:
     value: str = defn["pattern"]
     rex = _re.compile(value)
 
@@ -174,10 +173,10 @@ def pattern(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def enum(defn: _Schema, tracker) -> _Validator:
+def enum(defn: Schema, context: Context) -> Validator:
     value: list[object] = defn["enum"]
 
-    members: _Collection[object] = list(map(_strict_bool_nested, value))
+    members: Collection[object] = list(map(_strict_bool_nested, value))
     try:
         members = set(members)
     except TypeError:
@@ -191,7 +190,7 @@ def enum(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def const(defn: _Schema, tracker) -> _Validator:
+def const(defn: Schema, context: Context) -> Validator:
     value: object = _strict_bool_nested(defn["const"])
 
     def validate(x, path):
@@ -202,13 +201,14 @@ def const(defn: _Schema, tracker) -> _Validator:
 
 
 @_register
-def format_(defn: _Schema, tracker) -> _Validator | None:
+def format_(defn: Schema, context: Context) -> Validator | None:
     value: str = defn["format"]
-    if value in _FORMATS:
+    if value in context.formats:
+        format = context.formats[value]
 
         @_string_guard(defn)
         def validate(x, path):
-            if not _FORMATS[value](x):
+            if not format(x):
                 return ValidationError(
                     path, f"{x} does not match format '{value}", "format"
                 )
@@ -219,7 +219,7 @@ def format_(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def minimum(defn: _Schema, tracker) -> _Validator | None:
+def minimum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["minimum"]
 
     @_number_guard(defn)
@@ -231,7 +231,7 @@ def minimum(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def exclusive_minimum(defn: _Schema, tracker) -> _Validator | None:
+def exclusive_minimum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["exclusiveMinimum"]
 
     @_number_guard(defn)
@@ -243,7 +243,7 @@ def exclusive_minimum(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def maximum(defn: _Schema, tracker) -> _Validator | None:
+def maximum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["maximum"]
 
     @_number_guard(defn)
@@ -255,7 +255,7 @@ def maximum(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def exclusive_maximum(defn: _Schema, tracker) -> _Validator | None:
+def exclusive_maximum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["exclusiveMaximum"]
 
     @_number_guard(defn)
@@ -267,7 +267,7 @@ def exclusive_maximum(defn: _Schema, tracker) -> _Validator | None:
 
 
 @_register
-def multiple_of(defn: _Schema, tracker) -> _Validator | None:
+def multiple_of(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["multipleOf"]
 
     @_number_guard(defn)
@@ -285,7 +285,7 @@ def multiple_of(defn: _Schema, tracker) -> _Validator | None:
     return validate
 
 
-def _guard(defn: _Schema, js_types: set[str], py_types: tuple[type, ...] | type):
+def _guard(defn: Schema, js_types: set[str], py_types: tuple[type, ...] | type):
     """Create a type guard suitable for decorating a validator.
 
     Our type guards are lazy: we pass them the schema, and if they spot a
@@ -297,7 +297,7 @@ def _guard(defn: _Schema, js_types: set[str], py_types: tuple[type, ...] | type)
             ...
     """
 
-    def decorator(validator: _Validator) -> _Validator | None:
+    def decorator(validator: Validator) -> Validator | None:
         # makes no sense, skip the validator entirely
         if "type" in defn and (
             (isinstance(defn["type"], str) and defn["type"] not in js_types)
