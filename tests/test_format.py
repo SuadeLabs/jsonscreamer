@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from jsonscreamer import format
@@ -161,3 +163,26 @@ def test_tests():
         assert _TEST_CASES.get(func.__name__), (
             f"You need to write a test for {func.__name__}"
         )
+
+
+@pytest.mark.parametrize(
+    "value,valid",
+    (
+        ("2020", False),
+        ("2020-01", False),
+        ("2020-01-02", True),
+        ("2020-01-02T01", True),
+        ("2020-01-02T01:02:03", True),
+        ("2020-01-02T01:02:03.456", True),
+        ("2020-01-02T01:02:03.456Z", sys.version_info >= (3, 11)),  # 3.10 bug
+        ("2020-01-02T01:02:03.456+00:01", True),
+        ("2020-01-02T01:02:66.456+00:01", False),
+        ("2020-01-02 01", True),
+        ("2020-01-02 01:02:03", True),
+        ("2020-01-02 01:02:03.456", True),
+        ("2020-01-02 01:02:03.456+00:01", True),
+        ("2020-01-02 01:02:66.456+00:01", False),
+    ),
+)
+def test_is_date_time_iso(value, valid):
+    assert format.is_date_time_iso(value) == valid

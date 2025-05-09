@@ -19,20 +19,23 @@ from fqdn import FQDN as _FQDN
 
 def is_date_time(x: str) -> bool:
     """Date-time, see RFC 3339, section 5.6"""
-    possible_formats = (
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%dT%H:%M:%SZ",
-        "%Y-%m-%dT%H:%M:%S",
-    )
+    try:
+        _datetime.strptime(x, "%Y-%m-%dT%H:%M:%S%z")
+        return True
+    except ValueError:
+        return False
 
-    for format in possible_formats:
-        try:
-            _datetime.strptime(x, format)
-            return True
-        except ValueError:
-            continue
 
-    return False
+def is_date_time_iso(x: str) -> bool:
+    """Date-time, using python's fromisoformat, rather than RFC 3339.
+
+    Typically this is 4x faster than the spec-compliant behaviour.
+    """
+    try:
+        _datetime.fromisoformat(x)
+        return True
+    except ValueError:
+        return False
 
 
 def is_time(x: str) -> bool:
@@ -213,6 +216,9 @@ def is_duration(x: str) -> bool:
 
 FORMATS = {}
 for name, obj in list(locals().items()):
+    if name == "is_date_time_iso":
+        continue  # not loaded by default
+
     # is_some_thing is the "some-thing" validator
     pieces = name.split("_")
     if pieces[0] == "is":

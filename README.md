@@ -41,15 +41,21 @@ For good performance, create a single `Validator` instance and call its methods 
 
 ```python
 from jsonscreamer import Validator
+from jsonscreamer.format import is_date_time_iso
 
 val = Validator({"type": "string"})
-print(val.is_valid(1))
-print(val.is_valid("1"))
+print(val.is_valid(1))  # True
+print(val.is_valid("1"))  # False
+val.validate(1)  # raises a ValidationError with path, message, type
 
-val.validate(1)  # raises a ValidationError
+# Compliant format checkers are run by default, but this one is faster
+# if you're OK with python's default ISO8601 instead of RFC3339:
+val = Validator(
+    {"type": "string", "format": "date-time"},
+    formats={"date-time": is_date_time_iso},
+)
+print(val.is_valid("2020-01-01 01:02:03"))  # True
 ```
-
-instantiating the validator is expensive, whereas calling its methods is cheap.
 
 
 ## Test suite compliance
