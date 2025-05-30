@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import json as _json
+import pathlib as _pathlib
+from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 from . import array, basic, compile, logical, object_
 from .format import FORMATS as _FORMATS
 from .resolve import HANDLERS as _HANDLERS, RefTracker as _RefTracker
 from .types import Context as _Context
 
-if TYPE_CHECKING:
+if _TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from typing import Any
 
@@ -25,12 +27,18 @@ class Validator:
         >>> validator.validate(some_instance)
     """
 
+    _metavalidator = None
+
     def __init__(
         self,
         schema: Schema | bool = True,
         formats: dict[str, Format] | None = None,
         handlers: dict[str, Handler] | None = None,
+        check_schema: bool = True,
     ) -> None:
+        if check_schema:
+            type(self).check_schema(schema)
+
         formats = _FORMATS | (formats or {})
         handlers = _HANDLERS | (handlers or {})
         tracker = _RefTracker(schema, handlers=handlers)
@@ -44,14 +52,40 @@ class Validator:
         self._validator = tracker.entrypoint
 
     def is_valid(self, instance: Any) -> bool:
+        """Check whether the given instance is valid."""
         return not any(self._validator(instance, []))
 
     def validate(self, instance: Any) -> None:
+        """Validate the instance and raise a ValidationError if it is invalid."""
         for err in self._validator(instance, []):
             raise err
 
     def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
+        """Iterate over all validation errors for the instance."""
         yield from self._validator(instance, [])
+
+    # These are a little more baroque - but basically aimed at loading / creating
+    # a metaschema validator at most once:
+
+    @classmethod
+    def check_schema(cls, schema: Any) -> None:
+        """Validate the schema and raise a ValidationError if it is invalid.
+
+        Handles only the draft 07 spec.
+        """
+        return cls.metavalidator().validate(schema)
+
+    @classmethod
+    def metavalidator(cls) -> Validator:
+        """Return the Validator for draft 07 schemas."""
+        if cls._metavalidator is None:
+            here = _pathlib.Path(__file__).parent
+            with (here / "_metaschemas" / "draft07.json").open() as f:
+                metaschema = _json.load(f)
+
+            cls._metavalidator = cls(metaschema, check_schema=False)
+
+        return cls._metavalidator
 
 
 __all__ = ["Validator", "array", "basic", "compile", "logical", "object_"]
