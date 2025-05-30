@@ -44,12 +44,17 @@ class Validator:
         tracker = _RefTracker(schema, handlers=handlers)
         self._context = _Context(formats=formats, tracker=tracker)
 
+        # NOTE: if there were no $ref item in the schema, we wouldn't need a tracker,
+        # it just obscures the logic. However, given that refs exist and can be circular
+        # we have to track where we are and where we've been within the schemas:
         while tracker:
             uri = tracker.pop()
             with tracker._resolver.resolving(uri) as sub_defn:
                 tracker.compiled[uri] = compile.compile_(sub_defn, self._context)
 
         self._validator = tracker.entrypoint
+
+    # Simple validation functions:
 
     def is_valid(self, instance: Any) -> bool:
         """Check whether the given instance is valid."""
@@ -65,7 +70,7 @@ class Validator:
         yield from self._validator(instance, [])
 
     # These are a little more baroque - but basically aimed at loading / creating
-    # a metaschema validator at most once:
+    # a schema validator at most once:
 
     @classmethod
     def check_schema(cls, schema: Any) -> None:

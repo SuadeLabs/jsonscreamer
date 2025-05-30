@@ -270,7 +270,7 @@ def _type_guard(
     performing the type check directly.
 
     Usage:
-        @_type_guard(int)
+        @_type_guard(defn, schema_types=("integer",), py_types=int)
         def validator(...)
             ...
     """

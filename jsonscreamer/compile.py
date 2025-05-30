@@ -31,7 +31,7 @@ _TYPE_CHECKERS = {
 def type_(
     defn: Schema, context: Context
 ) -> Callable[[Json, Path], ValidationError | None]:
-    """Check the type of an item.
+    """Create a validator to check the type of an item.
 
     Unlike other validators we do not yield a value, but return it, since we
     want to break early and not run the other validations if they type check fails.
