@@ -31,8 +31,6 @@ dependencies = [
   "fqdn",
   # ref resolution
   "fastjsonschema",
-  # remote ref evaluation
-  "requests",
 ]
 
 [project.optional-dependencies]

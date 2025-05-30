@@ -7,9 +7,11 @@ This code is
 
 from __future__ import annotations
 
-import contextlib
-import urllib.parse as urlparse
-from typing import TYPE_CHECKING
+import contextlib as _contextlib
+import json as _json
+import urllib.parse as _urlparse
+import urllib.request as _request
+from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 from fastjsonschema.ref_resolver import (
     RefResolver as _FastRefResolver,
@@ -19,7 +21,7 @@ from fastjsonschema.ref_resolver import (
     resolve_remote,
 )
 
-if TYPE_CHECKING:
+if _TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
     from .types import Json, Schema, Validator
@@ -67,11 +69,9 @@ class RefTracker:
 
 
 def request_handler(uri: str) -> Json:
-    import requests
-
-    resp = requests.get(uri, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    request = _request.Request(uri, headers={"User-Agent": "jsonscreamer"})  # noqa: S310
+    with _request.urlopen(request) as resp:  # noqa: S310
+        return _json.load(resp)
 
 
 HANDLERS = {"http": request_handler, "https": request_handler}
@@ -107,16 +107,16 @@ class RefResolver(_FastRefResolver):
 
         super().__init__(base_uri, schema, store, cache, handlers)
 
-    @contextlib.contextmanager
+    @_contextlib.contextmanager
     def resolving(self, ref: str) -> Iterator[Schema | bool]:
         """
         Context manager which resolves a JSON ``ref`` and enters the
         resolution scope of this ref.
         """
-        absolute = bool(urlparse.urlsplit(ref).netloc)
+        absolute = bool(_urlparse.urlsplit(ref).netloc)
 
-        new_uri = ref if absolute else urlparse.urljoin(self.resolution_scope, ref)
-        uri, fragment = urlparse.urldefrag(new_uri)
+        new_uri = ref if absolute else _urlparse.urljoin(self.resolution_scope, ref)
+        uri, fragment = _urlparse.urldefrag(new_uri)
 
         # TODO: edge case - fragments in ids - remove for later schemas
         if new_uri and new_uri in self.store:
@@ -147,7 +147,7 @@ class RefResolver(_FastRefResolver):
             pass
         elif "$ref" in node and isinstance(node["$ref"], str):
             ref = node["$ref"]
-            node["$ref"] = urlparse.urljoin(self.resolution_scope, ref)
+            node["$ref"] = _urlparse.urljoin(self.resolution_scope, ref)
         elif ("$id" in node or "id" in node) and isinstance(get_id(node), str):
             with self.in_scope(get_id(node)):
                 self.store[normalize(self.resolution_scope)] = node
