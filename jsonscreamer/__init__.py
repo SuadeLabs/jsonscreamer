@@ -4,13 +4,16 @@ from typing import TYPE_CHECKING
 
 from . import array, basic, compile, logical, object_
 from .format import FORMATS as _FORMATS
-from .resolve import RefTracker as _RefTracker
+from .resolve import HANDLERS as _HANDLERS, RefTracker as _RefTracker
 from .types import Context as _Context
 
 if TYPE_CHECKING:
-    from typing import Any as _Any
+    from collections.abc import Callable
+    from typing import Any
 
-    from .types import Format, Schema
+    from .types import Format, Json, Schema
+
+    Handler = Callable[[str], Json]
 
 
 class Validator:
@@ -23,10 +26,14 @@ class Validator:
     """
 
     def __init__(
-        self, schema: Schema | bool = True, formats: dict[str, Format] | None = None
+        self,
+        schema: Schema | bool = True,
+        formats: dict[str, Format] | None = None,
+        handlers: dict[str, Handler] | None = None,
     ):
         formats = _FORMATS | (formats or {})
-        tracker = _RefTracker(schema)
+        handlers = _HANDLERS | (handlers or {})
+        tracker = _RefTracker(schema, handlers=handlers)
         self._context = _Context(formats=formats, tracker=tracker)
 
         while tracker:
@@ -36,10 +43,10 @@ class Validator:
 
         self._validator = tracker.entrypoint
 
-    def is_valid(self, instance: _Any) -> bool:
+    def is_valid(self, instance: Any) -> bool:
         return not self._validator(instance, [])
 
-    def validate(self, instance: _Any) -> None:
+    def validate(self, instance: Any) -> None:
         err = self._validator(instance, [])
         if err is not None:
             # I didn't set out to write go-like python, but it turns out

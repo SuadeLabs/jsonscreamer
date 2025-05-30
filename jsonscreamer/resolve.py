@@ -31,15 +31,13 @@ class RefTracker:
     recursive.
     """
 
-    def __init__(self, schema, resolver=None):
+    def __init__(self, schema, handlers):
         # Trackers for various states of compilation
         self._queued = []
         self._picked = set()
         self.compiled = {}
 
-        self._resolver = resolver or RefResolver.from_schema(
-            schema, store={}, handlers=HANDLERS
-        )
+        self._resolver = RefResolver.from_schema(schema, store={}, handlers=handlers)
 
         # Kick off the compilation with top-level function
         self._queued.append(self._resolver.get_uri())

@@ -65,7 +65,7 @@ SCHEMA = {
 
 
 def test_complex():
-    validator = compile_(SCHEMA, Context({}, RefTracker(SCHEMA)))
+    validator = compile_(SCHEMA, Context({}, RefTracker(SCHEMA, {})))
 
     assert validator("fish", []) is not None
     assert validator({}, []) is not None
