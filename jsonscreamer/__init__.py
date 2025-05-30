@@ -32,14 +32,20 @@ class Validator:
     def __init__(
         self,
         schema: Schema | bool = True,
-        formats: dict[str, Format] | None = None,
+        formats: dict[str, Format] | bool = True,
         handlers: dict[str, Handler] | None = None,
         check_schema: bool = True,
     ) -> None:
         if check_schema:
             type(self).check_schema(schema)
 
-        formats = _FORMATS | (formats or {})
+        if formats is False:
+            formats = {}  # completely disable format checking
+        elif formats is True:
+            formats = _FORMATS  # use default format checking
+        else:
+            formats = _FORMATS | formats  # extend with custom formats
+
         handlers = _HANDLERS | (handlers or {})
         tracker = _RefTracker(schema, handlers=handlers)
         self._context = _Context(formats=formats, tracker=tracker)

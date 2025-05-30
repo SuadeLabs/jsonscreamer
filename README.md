@@ -80,8 +80,9 @@ and the `ValidationError` class itself has the following properties:
 
 ### Custom formats
 
-The `Validator` class takes a `formats` parameter which can be used to add your own formats, or override default ones.
-The parameter should be a dictionary where the keys are the formats and the values are validators which recieve a string and return either True or False, depending on if it conforms to the format.
+By default jsonscreamer installs with only a subset of format validators (those which require no external dependencies), you can install all format checkers via `pip install jsonscreamer[all-formats]`. The `Validator` class also takes a `formats` parameter which you can set to `False` to disable all formats, or provide a dictionary of your own formats to override or add to the existing formats.
+
+When providing a dictionary of custom formats, the the keys are the format names (like "email") and the values are validators which recieve a string and return either True or False, depending on if it conforms to the format.
 
 For example:
 
@@ -96,6 +97,16 @@ spammy_validator = Validator(
 
 print(spammy_validator.is_valid("spam spam spam spam"))  # True
 print(spammy_validator.is_valid("eggs"))  # False
+```
+
+or, disabling the format checks completely:
+
+```python
+>>> from jsonscreamer import Validator
+>>> val = Validator({"type": "string", "format": "date-time"}, formats=False)
+>>> val.is_valid("not a date")
+True
+
 ```
 
 ### Custom ref handlers

@@ -10,12 +10,6 @@ import re as _re
 from datetime import date as _date, datetime as _datetime
 from uuid import UUID as _UUID
 
-import idna as _idna
-import jsonpointer as _jsonpointer
-import rfc3987 as _rfc3987
-import uri_template as _uri_template
-from fqdn import FQDN as _FQDN
-
 
 def is_date_time(x: str) -> bool:
     """Date-time, see RFC 3339, section 5.6"""
@@ -94,65 +88,75 @@ def is_uuid(x: str) -> bool:
     return all(x[position] == "-" for position in (8, 13, 18, 23))
 
 
-def is_hostname(x: str) -> bool:
-    """Internet host name, see RFC 1034, section 3.1."""
-    try:
-        return _FQDN(x).is_valid  # pyright: ignore[reportReturnType] (this is really a bool)
-    except ValueError:
-        return False
+try:
+    import idna as _idna
+    import jsonpointer as _jsonpointer
+    import rfc3987 as _rfc3987
+    import uri_template as _uri_template
+    from fqdn import FQDN as _FQDN
 
+    def is_hostname(x: str) -> bool:
+        """Internet host name, see RFC 1034, section 3.1."""
+        try:
+            return _FQDN(x).is_valid  # pyright: ignore[reportReturnType] (this is really a bool)
+        except ValueError:
+            return False
 
-def is_idn_host_name(x: str) -> bool:
-    """Internationalized domain name, see RFC 5891."""
-    try:
-        _idna.encode(x)
-        return True
-    except ValueError:
-        return False
+    def is_idn_host_name(x: str) -> bool:
+        """Internationalized domain name, see RFC 5891."""
+        try:
+            _idna.encode(x)
+            return True
+        except ValueError:
+            return False
 
+    def is_uri(x: str) -> bool:
+        """A universal resource identifier (URI), see RFC3986."""
+        try:
+            _rfc3987.parse(x, rule="URI")
+            return True
+        except ValueError:
+            return False
 
-def is_uri(x: str) -> bool:
-    """A universal resource identifier (URI), see RFC3986."""
-    try:
-        _rfc3987.parse(x, rule="URI")
-        return True
-    except ValueError:
-        return False
+    def is_uri_reference(x: str) -> bool:
+        """A URI reference, see RFC3986, section 4.1."""
+        try:
+            _rfc3987.parse(x, rule="URI_reference")
+            return True
+        except ValueError:
+            return False
 
+    def is_iri(x: str) -> bool:
+        """An internationalized resource identifier (IRI), see RFC3987."""
+        try:
+            _rfc3987.parse(x, rule="IRI")
+            return True
+        except ValueError:
+            return False
 
-def is_uri_reference(x: str) -> bool:
-    """A URI reference, see RFC3986, section 4.1."""
-    try:
-        _rfc3987.parse(x, rule="URI_reference")
-        return True
-    except ValueError:
-        return False
+    def is_iri_reference(x: str) -> bool:
+        """An IRI reference, see RFC3987, section 2.2."""
+        try:
+            _rfc3987.parse(x, rule="IRI_reference")
+            return True
+        except ValueError:
+            return False
 
+    def is_json_pointer(x: str) -> bool:
+        """A JSON pointer, see RFC 6901."""
+        try:
+            return bool(_jsonpointer.JsonPointer(x))
+        except _jsonpointer.JsonPointerException:
+            return False
 
-def is_iri(x: str) -> bool:
-    """An internationalized resource identifier (IRI), see RFC3987."""
-    try:
-        _rfc3987.parse(x, rule="IRI")
-        return True
-    except ValueError:
-        return False
+    def is_uri_template(x: str) -> bool:
+        try:
+            return _uri_template.validate(x)
+        except ValueError:
+            return False
 
-
-def is_iri_reference(x: str) -> bool:
-    """An IRI reference, see RFC3987, section 2.2."""
-    try:
-        _rfc3987.parse(x, rule="IRI_reference")
-        return True
-    except ValueError:
-        return False
-
-
-def is_json_pointer(x: str) -> bool:
-    """A JSON pointer, see RFC 6901."""
-    try:
-        return bool(_jsonpointer.JsonPointer(x))
-    except _jsonpointer.JsonPointerException:
-        return False
+except ImportError:
+    pass
 
 
 def is_relative_json_pointer(x: str) -> bool:
@@ -177,13 +181,6 @@ def is_relative_json_pointer(x: str) -> bool:
         break
 
     return (rest == "#") or is_json_pointer(rest)
-
-
-def is_uri_template(x: str) -> bool:
-    try:
-        return _uri_template.validate(x)
-    except ValueError:
-        return False
 
 
 __duration_date_order = _re.compile("^P([0-9.,]+Y)?([0-9.,]+M)?([0-9.,]+D)?$")

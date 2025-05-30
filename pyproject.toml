@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "jsonscreamer"
-version = "0.3.1"
+version = "0.4.0"
 authors = [{ name = "Oliver Margetts" }]
 description = "fast json schema validator"
 requires-python = ">=3.10"
@@ -23,14 +23,7 @@ classifiers = [
   "Topic :: File Formats :: JSON :: JSON Schema",
 ]
 dependencies = [
-  # format checkers
-  "idna",
-  "jsonpointer",
-  "rfc3987",
-  "uri_template",
-  "fqdn",
-  # ref resolution
-  "fastjsonschema",
+  "fastjsonschema",  # ref resolution
 ]
 
 [project.optional-dependencies]
@@ -39,6 +32,20 @@ dev = [
   "jsonschema",
   "ruff",
   "pyright",
+  # extra format checkers
+  "idna",
+  "jsonpointer",
+  "rfc3987",
+  "uri_template",
+  "fqdn",
+]
+all_formats = [
+  # extra format checkers
+  "idna",
+  "jsonpointer",
+  "rfc3987",
+  "uri_template",
+  "fqdn",
 ]
 
 [tool.flit.external-data]
