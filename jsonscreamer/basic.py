@@ -150,7 +150,12 @@ def enum(defn: Schema, context: Context) -> Validator:
         pass  # Unhashable have to use O(n) lookup
 
     def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-        if x not in members:
+        try:
+            if x not in members:
+                yield ValidationError(
+                    tuple(path), f"'{x}' is not one of {value}", "enum"
+                )
+        except TypeError:  # checking if unhashable type in a set of hashable objects
             yield ValidationError(tuple(path), f"'{x}' is not one of {value}", "enum")
 
     return validate
