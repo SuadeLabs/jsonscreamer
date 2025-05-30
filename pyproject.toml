@@ -1,10 +1,10 @@
-# [build-system]
-# requires = ["flit_core >=3.2,<4"]
-# build-backend = "flit_core.buildapi"
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [project]
 name = "jsonscreamer"
-version = "0.3.0"
+version = "0.3.1"
 authors = [{ name = "Oliver Margetts" }]
 description = "fast json schema validator"
 requires-python = ">=3.10"
@@ -40,6 +40,9 @@ dev = [
   "ruff",
   "pyright",
 ]
+
+[tool.flit.external-data]
+directory = "jsonscreamer/_metaschemas"
 
 [tool.ruff]
 line-length = 88
