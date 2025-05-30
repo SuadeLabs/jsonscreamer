@@ -24,19 +24,6 @@ if _TYPE_CHECKING:
 
     from .types import Context, Json, Path, Schema, Validator
 
-_TYPE_CHECKERS = {
-    "object": lambda x: isinstance(x, dict),
-    "array": lambda x: isinstance(x, list),
-    "string": lambda x: isinstance(x, str),
-    "number": lambda x: (isinstance(x, (float, int)) and not isinstance(x, bool)),
-    "integer": lambda x: (
-        (isinstance(x, int) and not isinstance(x, bool))
-        or (isinstance(x, float) and x == int(x))
-    ),
-    "boolean": lambda x: isinstance(x, bool),
-    "null": lambda x: x is None,
-}
-
 
 class _StrictBool:
     """Exists purely because 0 == False in python.
@@ -103,33 +90,6 @@ def _strict_bool_nested(x: object) -> object:
     return x
 
 
-@_register
-def type_(defn: Schema, context: Context) -> Validator:
-    required_type: str | list[str] = defn["type"]
-
-    if isinstance(required_type, str):
-        type_checker = _TYPE_CHECKERS[required_type]
-
-        def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-            if not type_checker(x):
-                yield ValidationError(
-                    tuple(path), f"{x} is not of type '{required_type}'", "type"
-                )
-
-    elif isinstance(required_type, list):
-        type_checkers = [_TYPE_CHECKERS[v] for v in required_type]
-
-        def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-            if not any(t(x) for t in type_checkers):
-                yield ValidationError(
-                    tuple(path),
-                    f"{x} is not any of the types '{required_type}'",
-                    "type",
-                )
-
-    return validate
-
-
 def _min_len_validator(n: int, kind: str) -> Validator:
     def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         if len(x) < n:  # type: ignore (assumption: sized object provided)
@@ -153,14 +113,14 @@ def _max_len_validator(n: int, kind: str) -> Validator:
 @_register
 def min_length(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["minLength"]
-    guard = _type_guard(str)
+    guard = _string_guard(defn)
     return guard(_min_len_validator(value, "minLength"))
 
 
 @_register
 def max_length(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["maxLength"]
-    guard = _type_guard(str)
+    guard = _string_guard(defn)
     return guard(_max_len_validator(value, "maxLength"))
 
 
@@ -169,7 +129,7 @@ def pattern(defn: Schema, context: Context) -> Validator | None:
     value: str = defn["pattern"]
     rex = _re.compile(value)
 
-    @_type_guard(str)
+    @_string_guard(defn)
     def validate(x: str, path: Path) -> Iterable[ValidationError]:
         if not rex.search(x):
             yield ValidationError(
@@ -213,7 +173,7 @@ def format_(defn: Schema, context: Context) -> Validator | None:
     if value in context.formats:
         format = context.formats[value]
 
-        @_type_guard(str)
+        @_string_guard(defn)
         def validate(x: str, path: Path) -> Iterable[ValidationError]:
             if not format(x):
                 yield ValidationError(
@@ -229,7 +189,7 @@ def format_(defn: Schema, context: Context) -> Validator | None:
 def minimum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["minimum"]
 
-    @_type_guard((float, int))
+    @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x < value:
             yield ValidationError(tuple(path), f"{x} < {value}", "minimum")
@@ -241,7 +201,7 @@ def minimum(defn: Schema, context: Context) -> Validator | None:
 def exclusive_minimum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["exclusiveMinimum"]
 
-    @_type_guard((float, int))
+    @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x <= value:
             yield ValidationError(tuple(path), f"{x} <= {value}", "exclusiveMinimum")
@@ -253,7 +213,7 @@ def exclusive_minimum(defn: Schema, context: Context) -> Validator | None:
 def maximum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["maximum"]
 
-    @_type_guard((float, int))
+    @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x > value:
             yield ValidationError(tuple(path), f"{x} > {value}", "maximum")
@@ -265,7 +225,7 @@ def maximum(defn: Schema, context: Context) -> Validator | None:
 def exclusive_maximum(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["exclusiveMaximum"]
 
-    @_type_guard((float, int))
+    @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x >= value:
             yield ValidationError(tuple(path), f"{x} >= {value}", "exclusiveMaximum")
@@ -277,7 +237,7 @@ def exclusive_maximum(defn: Schema, context: Context) -> Validator | None:
 def multiple_of(defn: Schema, context: Context) -> Validator | None:
     value: float | int = defn["multipleOf"]
 
-    @_type_guard((float, int))
+    @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         # More accurate than x % multiplier == 0
         try:
@@ -294,8 +254,15 @@ def multiple_of(defn: Schema, context: Context) -> Validator | None:
     return validate
 
 
-def _type_guard(py_types: tuple[type, ...] | type) -> ...:
+def _type_guard(
+    defn: Schema, schema_types: tuple[str, ...], py_types: tuple[type, ...] | type
+) -> ...:
     """Create a type guard suitable for decorating a validator.
+
+    We are lazy in our type checking: failing a type check at the schema level
+    will always short-circuit the validations and stop further checks. This means
+    we can be confident these validators will always be passed e.g. str even without
+    performing the type check directly.
 
     Usage:
         @_type_guard(int)
@@ -306,6 +273,14 @@ def _type_guard(py_types: tuple[type, ...] | type) -> ...:
     def decorator(
         validator: Callable[[Any, Path], Iterable[ValidationError]],
     ) -> Validator:
+        if "type" in defn:
+            types = (
+                {defn["type"]} if isinstance(defn["type"], str) else set(defn["type"])
+            )
+            if types.issubset(schema_types):
+                # we can omit type check as it's guaranteed by the schema
+                return validator  # pyright: ignore[reportReturnType] (protected by schema type)
+
         @_functools.wraps(validator)
         def guarded(x: Json, path: Path) -> Iterable[ValidationError]:
             if isinstance(x, py_types):
@@ -314,3 +289,9 @@ def _type_guard(py_types: tuple[type, ...] | type) -> ...:
         return guarded
 
     return decorator
+
+
+_number_guard = _functools.partial(
+    _type_guard, schema_types=("number", "integer"), py_types=(int, float)
+)
+_string_guard = _functools.partial(_type_guard, schema_types=("string",), py_types=str)

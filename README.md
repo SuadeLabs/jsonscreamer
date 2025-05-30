@@ -23,17 +23,17 @@ The small benchmark from our test suite gives the following numbers (under pytho
 
 | library | time | speedup |
 | --- | --- | --- |
-| jsonschema | 0.568s | 1.0x |
-| jsonscreamer | 0.085s | 6.66x |
+| jsonschema | 0.566s | 1.0x |
+| jsonscreamer | 0.066s | 8.5x |
 | fastjsonschema | 0.028s | 20.4x |
 
-In real-world usage with [large schemas](https://github.com/SuadeLabs/fire/blob/master/schemas/account.json) we've seen an ~8x speedup over jsonschema and numbers are much closer to fastjsonschema. For these benchmarks we explicitly set all 3 validators' date-time format checkers as the same, since fastjsonschema accepts nonsense datetimes like `2025-19-39T29:00:00Z` as valid, so it made sense to use the same datetime standard everywhere:
+In real-world usage with [large schemas](https://github.com/SuadeLabs/fire/blob/master/schemas/account.json) we've seen an ~9x speedup over jsonschema. For these benchmarks, since fastjsonschema accepts nonsense datetimes like `2025-19-39T29:00:00Z` as valid by default, it made sense to explicitly set all 3 validators' date-time format checkers as the same (we'd need to do this extra check anyway if using fastjsonschema):
 
 | library | throughput | speedup |
 | --- | --- | --- |
-| jsonschema | 7132it/s | 1.0x |
-| jsonscreamer | 56109it/s| 7.8x |
-| fastjsonschema | 128407it/s | 18.0x |
+| jsonschema | 7166it/s | 1.0x |
+| jsonscreamer | 64296it/s| 8.9x |
+| fastjsonschema | 132656it/s | 18.5x |
 
 
 ## Usage

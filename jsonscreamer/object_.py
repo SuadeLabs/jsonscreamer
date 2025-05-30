@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools as _functools
 import re as _re
 from typing import TYPE_CHECKING
 
@@ -15,18 +16,20 @@ if TYPE_CHECKING:
 
     _VT = TypeVar("_VT")
 
+_object_guard = _functools.partial(_type_guard, schema_types=("object",), py_types=dict)
+
 
 @_register
 def max_properties(defn: Schema, context: Context) -> Validator:
     value: int = defn["maxProperties"]
-    guard = _type_guard(dict)
+    guard = _object_guard(defn)
     return guard(_max_len_validator(value, "maxProperties"))
 
 
 @_register
 def min_properties(defn: Schema, context: Context) -> Validator:
     value: int = defn["minProperties"]
-    guard = _type_guard(dict)
+    guard = _object_guard(defn)
     return guard(_min_len_validator(value, "minProperties"))
 
 
@@ -34,7 +37,7 @@ def min_properties(defn: Schema, context: Context) -> Validator:
 def property_names(defn: Schema, context: Context) -> Validator:
     validator = _compile(defn["propertyNames"], context)
 
-    @_type_guard(dict)
+    @_object_guard(defn)
     def validate(x: dict[str, Json], path: Path) -> ...:
         for key in x:
             yield from validator(key, path)
@@ -47,7 +50,7 @@ def required(defn: Schema, context: Context) -> Validator | None:
     value: list[str] = defn["required"]
     if value:
 
-        @_type_guard(dict)
+        @_object_guard(defn)
         def validate(x: dict[str, Json], path: Path) -> ...:
             for v in value:
                 if v not in x:
@@ -82,7 +85,7 @@ def dependencies(defn: Schema, context: Context) -> Validator | None:
         if checker is not None:
             checkers[dependent] = checker
 
-    @_type_guard(dict)
+    @_object_guard(defn)
     def validate(x: dict[str, Json], path: Path) -> ...:
         for dependent, checker in checkers.items():
             if dependent in x:
@@ -115,7 +118,7 @@ def properties(defn: Schema, context: Context) -> Validator:
     value = defn["properties"]
     validators = {k: _compile(v, context) for k, v in value.items()}
 
-    @_type_guard(dict)
+    @_object_guard(defn)
     def validate(x: dict[str, Json], path: Path) -> Iterable[ValidationError]:
         for k, v in _path_push_iterator(path, x):
             if k in validators:
@@ -129,7 +132,7 @@ def pattern_properties(defn: Schema, context: Context) -> Validator:
     value = defn["patternProperties"]
     validators = [(_re.compile(k), _compile(v, context)) for k, v in value.items()]
 
-    @_type_guard(dict)
+    @_object_guard(defn)
     def validate(x: dict[str, Json], path: Path) -> Iterable[ValidationError]:
         # ugh...
         for rex, val in validators:
@@ -148,7 +151,7 @@ def additional_properties(defn: Schema, context: Context) -> Validator:
     excluded_names = set(defn.get("properties", ()))
     excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties", ())]
 
-    @_type_guard(dict)
+    @_object_guard(defn)
     def validate(x: dict[str, Json], path: Path) -> Iterable[ValidationError]:
         for k, v in _path_push_iterator(path, x):
             if k in excluded_names:

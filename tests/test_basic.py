@@ -19,8 +19,8 @@ from jsonscreamer.basic import (
     minimum,
     multiple_of,
     pattern,
-    type_,
 )
+from jsonscreamer.compile import type_
 from jsonscreamer.format import FORMATS
 
 TYPENAMES = ("boolean", "integer", "null", "number", "string", "zzzzzz")
@@ -53,7 +53,7 @@ def test_validate_type(typename):
         {},
         [],
     ]:
-        result = list(validator(value, path=list("xy")))  # pyright: ignore[reportArgumentType]
+        result = validator(value, list("xy"))  # pyright: ignore[reportArgumentType]
 
         if isinstance(value, valid):
             assert not result, f"{value} should be a valid {typename}"
@@ -61,9 +61,9 @@ def test_validate_type(typename):
             assert result, f"{value} should not be a valid {typename}"
 
     for value in (True, False):
-        result = list(validator(value, path=list("xy")))
+        result = validator(value, list("xy"))
         if typename == "boolean":
-            assert result == []
+            assert not result
         else:
             assert result
 
