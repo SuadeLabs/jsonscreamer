@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from .resolve import RefTracker
 
-Json = bool | int | float | str | _Sequence["Json"] | _Mapping[str, "Json"]
+Json = None | bool | int | float | str | _Sequence["Json"] | _Mapping[str, "Json"]
 Path = list[str | int]
 ImmutablePath = tuple[str | int, ...]
 Format = _Callable[[str], bool]
