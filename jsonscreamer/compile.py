@@ -47,9 +47,7 @@ def compile_(defn: Schema | bool, context: Context):
 
         def validate(x, path):
             for v in validators:
-                maybe_err = v(x, path)
-                if maybe_err:
-                    return maybe_err
+                yield from v(x, path)
 
     return validate
 
@@ -63,7 +61,7 @@ def compile_ref(defn: Schema, context: Context):
             tracker.queue(uri)
 
         def validate(x, path):
-            return tracker.compiled[uri](x, path)
+            yield from tracker.compiled[uri](x, path)
 
         return validate
 
@@ -78,8 +76,8 @@ def _name_from_validator(validator: Callable) -> str:
 
 
 def _true(x, path):
-    return None
+    return ()
 
 
 def _false(x, path):
-    return ValidationError(path, f"{x} cannot satisfy false", "false")
+    return (ValidationError(path, f"{x} cannot satisfy false", "false"),)

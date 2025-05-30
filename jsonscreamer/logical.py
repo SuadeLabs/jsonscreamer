@@ -16,8 +16,8 @@ def not_(defn: Schema, context: Context) -> Validator:
     validator = _compile(defn["not"], context)
 
     def validate(x, path):
-        if not validator(x, path):
-            return ValidationError(path, f"{x} should not satisfy {defn['not']}", "not")
+        if not any(validator(x, path)):
+            yield ValidationError(path, f"{x} should not satisfy {defn['not']}", "not")
 
     return validate
 
@@ -28,9 +28,7 @@ def all_of(defn: Schema, context: Context) -> Validator:
 
     def validate(x, path):
         for v in validators:
-            err = v(x, path)
-            if err:
-                return err
+            yield from v(x, path)
 
     return validate
 
@@ -42,13 +40,16 @@ def any_of(defn: Schema, context: Context) -> Validator:
     def validate(x, path):
         messages = []
         for v in validators:
-            err = v(x, path)
-            if err is None:
-                return None
-            messages.append(err.message)
+            errs = list(v(x, path))
+            if not errs:
+                return ()
+
+            messages.extend(err.message for err in errs)
 
         failures = ", ".join(messages)
-        return ValidationError(path, f"{x} failed all conditions: {failures}", "anyOf")
+        return (
+            ValidationError(path, f"{x} failed all conditions: {failures}", "anyOf"),
+        )
 
     return validate
 
@@ -61,12 +62,11 @@ def one_of(defn: Schema, context: Context) -> Validator:
         passed = 0
 
         for v in validators:
-            err = v(x, path)
-            if err is None:
+            if not any(v(x, path)):
                 passed += 1
 
         if passed != 1:
-            return ValidationError(
+            yield ValidationError(
                 path, f"{x} satisfied {passed} (!= 1) of the conditions", "oneOf"
             )
 
@@ -87,8 +87,9 @@ def if_(defn: Schema, context: Context) -> Validator | None:
     else_validator = _compile(else_schema, context)
 
     def validate(x, path):
-        if not if_validator(x, path):  # XXX: no errors => if condition true
-            return then_validator(x, path)
-        return else_validator(x, path)
+        if not any(if_validator(x, path)):  # XXX: no errors => if condition true
+            yield from then_validator(x, path)
+        else:
+            yield from else_validator(x, path)
 
     return validate

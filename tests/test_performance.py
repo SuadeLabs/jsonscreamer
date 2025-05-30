@@ -5,73 +5,8 @@ import time
 import pytest
 
 from jsonscreamer import Validator
-from jsonscreamer.compile import compile_
-from jsonscreamer.resolve import RefTracker
-from jsonscreamer.types import Context
 
-POST_BODY = {
-    "id": 0,
-    "category": {"id": 0, "name": "string"},
-    "name": "doggie",
-    "photoUrls": ["string"],
-    "tags": [{"id": 0, "name": "string"}],
-    "status": "available",
-}
-
-
-SCHEMA = {
-    "type": "object",
-    "required": ["name", "photoUrls"],
-    "properties": {
-        "id": {
-            "type": "integer",
-        },
-        "name": {
-            "type": "string",
-        },
-        "category": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "integer"},
-                "name": {"type": "string"},
-            },
-            "required": ["id", "name"],
-        },
-        "photoUrls": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "integer"},
-                    "name": {"type": "string"},
-                },
-                "required": ["id", "name"],
-            },
-        },
-        "status": {
-            "type": "string",
-            "enum": [
-                "available",
-                "pending",
-                "sold",
-            ],
-        },
-    },
-}
-
-
-def test_complex():
-    validator = compile_(SCHEMA, Context({}, RefTracker(SCHEMA, {})))
-
-    assert validator("fish", []) is not None
-    assert validator({}, []) is not None
-    assert validator(POST_BODY, []) is None
-    assert validator({**POST_BODY, "name": 3}, []) is not None
-    assert validator({**POST_BODY, "category": {"name": "fish"}}, []) is not None
+from .test_complex import POST_BODY, SCHEMA
 
 
 @pytest.mark.parametrize(

@@ -1,36 +1,32 @@
 from __future__ import annotations
 
-import functools
 import re as _re
 from typing import TYPE_CHECKING
 
-from .basic import _guard, _max_len_validator, _min_len_validator
+from .basic import _max_len_validator, _min_len_validator, _type_guard
 from .compile import compile_ as _compile, register as _register
 from .types import ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable as _Iterable
-    from typing import TypeVar as _TypeVar
+    from collections.abc import Iterable
+    from typing import TypeVar
 
-    from .types import Context, Json, Path, Result, Schema, Validator
+    from .types import Context, Json, Path, Schema, Validator
 
-    _VT = _TypeVar("_VT")
-
-
-_object_guard = functools.partial(_guard, js_types={"object"}, py_types=dict)
+    _VT = TypeVar("_VT")
 
 
 @_register
 def max_properties(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["maxProperties"]
-    guard = _object_guard(defn)
+    guard = _type_guard(dict)
     return guard(_max_len_validator(value, "maxProperties"))
 
 
 @_register
 def min_properties(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["minProperties"]
-    guard = _object_guard(defn)
+    guard = _type_guard(dict)
     return guard(_min_len_validator(value, "minProperties"))
 
 
@@ -38,13 +34,10 @@ def min_properties(defn: Schema, context: Context) -> Validator | None:
 def property_names(defn: Schema, context: Context) -> Validator | None:
     validator = _compile(defn["propertyNames"], context)
 
-    @_object_guard(defn)
+    @_type_guard(dict)
     def validate(x, path):
         for key in x:
-            err = validator(key, path)
-            if err:
-                return err
-        return None
+            yield from validator(key, path)
 
     return validate
 
@@ -54,14 +47,13 @@ def required(defn: Schema, context: Context) -> Validator | None:
     value: list[str] = defn["required"]
     if value:
 
-        @_object_guard(defn)
+        @_type_guard(dict)
         def validate(x, path):
             for v in value:
                 if v not in x:
-                    return ValidationError(
+                    yield ValidationError(
                         path, f"{v} is a required property", "required"
                     )
-            return None
 
         return validate
 
@@ -90,13 +82,12 @@ def dependencies(defn: Schema, context: Context) -> Validator | None:
         if checker is not None:
             checkers[dependent] = checker
 
-    @_object_guard(defn)
+    @_type_guard(dict)
     def validate(x, path):
         for dependent, checker in checkers.items():
             if dependent in x:
-                err = checker(x, path)
-                if err:
-                    return ValidationError(
+                for err in checker(x, path):
+                    yield ValidationError(
                         path,
                         f"dependency for {dependent} not satisfied: {err.message}",
                         "dependencies",
@@ -109,7 +100,7 @@ def dependencies(defn: Schema, context: Context) -> Validator | None:
 
 def _path_push_iterator(
     path: list[str | int], obj: dict[str, _VT]
-) -> _Iterable[tuple[str, _VT]]:
+) -> Iterable[tuple[str, _VT]]:
     path.append("")  # front-load memory allocation
     try:
         for key, value in obj.items():
@@ -124,15 +115,11 @@ def properties(defn: Schema, context: Context) -> Validator | None:
     value = defn["properties"]
     validators = {k: _compile(v, context) for k, v in value.items()}
 
-    @_object_guard(defn)
-    def validate(x: Json, path: Path) -> Result:
+    @_type_guard(dict)
+    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
             if k in validators:
-                err = validators[k](v, path)
-                if err:
-                    return err
-
-        return None
+                yield from validators[k](v, path)
 
     return validate
 
@@ -142,17 +129,13 @@ def pattern_properties(defn: Schema, context: Context) -> Validator | None:
     value = defn["patternProperties"]
     validators = [(_re.compile(k), _compile(v, context)) for k, v in value.items()]
 
-    @_object_guard(defn)
-    def validate(x: Json, path: Path) -> Result:
+    @_type_guard(dict)
+    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         # ugh...
         for rex, val in validators:
             for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
                 if rex.search(k):
-                    err = val(v, path)
-                    if err:
-                        return err
-
-        return None
+                    yield from val(v, path)
 
     return validate
 
@@ -165,17 +148,13 @@ def additional_properties(defn: Schema, context: Context) -> Validator | None:
     excluded_names = set(defn.get("properties", ()))
     excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties", ())]
 
-    @_object_guard(defn)
-    def validate(x: Json, path: Path) -> Result:
+    @_type_guard(dict)
+    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
             if k in excluded_names:
                 continue
             if any(r.match(k) for r in excluded_rexes):
                 continue
-            err = simple_validator(v, path)
-            if err:
-                return err
-
-        return None
+            yield from simple_validator(v, path)
 
     return validate

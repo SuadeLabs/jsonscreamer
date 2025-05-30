@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any as _Any, Protocol
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from .resolve import RefTracker
 
 Json = bool | int | float | str | list["Json"] | dict[str, "Json"]
@@ -16,7 +18,7 @@ class ValidationError(ValueError):
     """Raised when an instance does not conform to the provided schema."""
 
     def __init__(self, absolute_path: Path, message: str, type: str):
-        self.absolute_path = absolute_path
+        self.absolute_path = tuple(absolute_path)
         self.message = message
         self.type = type
 
@@ -32,7 +34,7 @@ Result = ValidationError | None
 
 
 class Validator(Protocol):
-    def __call__(self, x: Json, path: Path) -> Result: ...
+    def __call__(self, x: Json, path: Path) -> Iterable[ValidationError]: ...
 
 
 Compiler = _Callable[[Schema, Context], Validator | None]

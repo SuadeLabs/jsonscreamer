@@ -8,10 +8,10 @@ from .resolve import HANDLERS as _HANDLERS, RefTracker as _RefTracker
 from .types import Context as _Context
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from typing import Any
 
-    from .types import Format, Json, Schema
+    from .types import Format, Json, Schema, ValidationError
 
     Handler = Callable[[str], Json]
 
@@ -44,14 +44,14 @@ class Validator:
         self._validator = tracker.entrypoint
 
     def is_valid(self, instance: Any) -> bool:
-        return not self._validator(instance, [])
+        return not any(self._validator(instance, []))
 
     def validate(self, instance: Any) -> None:
-        err = self._validator(instance, [])
-        if err is not None:
-            # I didn't set out to write go-like python, but it turns out
-            # errors as return values are just neater in this context
+        for err in self._validator(instance, []):
             raise err
+
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
+        yield from self._validator(instance, [])
 
 
 __all__ = ["Validator", "array", "basic", "compile", "logical", "object_"]
