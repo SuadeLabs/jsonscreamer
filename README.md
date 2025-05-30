@@ -41,22 +41,28 @@ In real-world usage with [large schemas](https://github.com/SuadeLabs/fire/blob/
 For good performance, create a single `Validator` instance and call its methods many times:
 
 ```python
-from jsonscreamer import Validator
-from jsonscreamer.format import is_date_time_iso
+>>> from jsonscreamer import Validator
+>>> from jsonscreamer.format import is_date_time_iso
+>>> Validator.check_schema({"type": "string"})
+>>> val = Validator({"type": "string"})
+>>> val.is_valid(1)
+False
+>>> val.is_valid("1")
+True
+>>> list(val.iter_errors("1"))
+[]
+>>> val.validate(1)
+Traceback (most recent call last):
+  ...
+jsonscreamer.types.ValidationError: ((), "1 is not of type 'string'", 'type')
 
-val = Validator({"type": "string"})
-print(val.is_valid(1))  # True
-print(val.is_valid("1"))  # False
-print(list(val.iter_errors("1")))  # gives a list of all errors for the item
-val.validate("1")  # raises a ValidationError with absolute_path, message, type
+>>> # Compliant format checkers are run by default, but this one is faster
+>>> # if you're OK with python's default ISO8601 instead of RFC3339:
+>>> schema = {"type": "string", "format": "date-time"}
+>>> val = Validator(schema, formats={"date-time": is_date_time_iso})
+>>> val.is_valid("2020-01-01 01:02:03")
+True
 
-# Compliant format checkers are run by default, but this one is faster
-# if you're OK with python's default ISO8601 instead of RFC3339:
-val = Validator(
-    {"type": "string", "format": "date-time"},
-    formats={"date-time": is_date_time_iso},
-)
-print(val.is_valid("2020-01-01 01:02:03"))  # True
 ```
 
 The `Validator` class has 3 primary methods:

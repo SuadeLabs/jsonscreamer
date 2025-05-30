@@ -60,3 +60,7 @@ jobs:
       - name: Test with pytest
         run: |
           pytest -v
+
+      - name: Test with doctest
+        run: |
+          python -m doctest README.md
