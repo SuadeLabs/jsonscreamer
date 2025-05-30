@@ -20,7 +20,9 @@ from fastjsonschema.ref_resolver import (
 )
 
 if TYPE_CHECKING:
-    from .types import Schema
+    from collections.abc import Callable, Iterator
+
+    from .types import Json, Schema, Validator
 
 
 class RefTracker:
@@ -31,11 +33,13 @@ class RefTracker:
     recursive.
     """
 
-    def __init__(self, schema, handlers):
+    def __init__(
+        self, schema: Schema | bool, handlers: dict[str, Callable[[str], Json]]
+    ) -> None:
         # Trackers for various states of compilation
-        self._queued = []
-        self._picked = set()
-        self.compiled = {}
+        self._queued: list[str] = []
+        self._picked: set[str] = set()
+        self.compiled: dict[str, Validator] = {}
 
         self._resolver = RefResolver.from_schema(schema, store={}, handlers=handlers)
 
@@ -58,11 +62,11 @@ class RefTracker:
         return uri in self._picked
 
     @property
-    def entrypoint(self):
+    def entrypoint(self) -> Validator:
         return self.compiled[self._entrypoint_uri]
 
 
-def request_handler(uri):
+def request_handler(uri: str) -> Json:
     import requests
 
     resp = requests.get(uri, timeout=30)
@@ -84,7 +88,14 @@ class RefResolver(_FastRefResolver):
 
     _TRAVERSE_ARBITRARY_KEYS = frozenset(("definitions", "properties"))
 
-    def __init__(self, base_uri, schema, store=..., cache=True, handlers=...):
+    def __init__(
+        self,
+        base_uri: str,
+        schema: Schema | bool,
+        store: object = ...,
+        cache: bool = True,
+        handlers: object = ...,
+    ) -> None:
         # XXX: import here must be deferred to prevent cyclic imports
         from .compile import _COMPILATION_FUNCTIONS
 
@@ -97,7 +108,7 @@ class RefResolver(_FastRefResolver):
         super().__init__(base_uri, schema, store, cache, handlers)
 
     @contextlib.contextmanager
-    def resolving(self, ref: str):
+    def resolving(self, ref: str) -> Iterator[Schema | bool]:
         """
         Context manager which resolves a JSON ``ref`` and enters the
         resolution scope of this ref.
@@ -128,7 +139,7 @@ class RefResolver(_FastRefResolver):
         finally:
             self.base_uri, self.schema = old_base_uri, old_schema
 
-    def walk(self, node: dict, arbitrary_keys=False):
+    def walk(self, node: dict, arbitrary_keys: bool = False) -> None:
         """
         Walk thru schema and dereferencing ``id`` and ``$ref`` instances
         """

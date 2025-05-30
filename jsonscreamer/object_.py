@@ -17,25 +17,25 @@ if TYPE_CHECKING:
 
 
 @_register
-def max_properties(defn: Schema, context: Context) -> Validator | None:
+def max_properties(defn: Schema, context: Context) -> Validator:
     value: int = defn["maxProperties"]
     guard = _type_guard(dict)
     return guard(_max_len_validator(value, "maxProperties"))
 
 
 @_register
-def min_properties(defn: Schema, context: Context) -> Validator | None:
+def min_properties(defn: Schema, context: Context) -> Validator:
     value: int = defn["minProperties"]
     guard = _type_guard(dict)
     return guard(_min_len_validator(value, "minProperties"))
 
 
 @_register
-def property_names(defn: Schema, context: Context) -> Validator | None:
+def property_names(defn: Schema, context: Context) -> Validator:
     validator = _compile(defn["propertyNames"], context)
 
     @_type_guard(dict)
-    def validate(x, path):
+    def validate(x: dict[str, Json], path: Path) -> ...:
         for key in x:
             yield from validator(key, path)
 
@@ -48,11 +48,11 @@ def required(defn: Schema, context: Context) -> Validator | None:
     if value:
 
         @_type_guard(dict)
-        def validate(x, path):
+        def validate(x: dict[str, Json], path: Path) -> ...:
             for v in value:
                 if v not in x:
                     yield ValidationError(
-                        path, f"{v} is a required property", "required"
+                        tuple(path), f"{v} is a required property", "required"
                     )
 
         return validate
@@ -83,12 +83,12 @@ def dependencies(defn: Schema, context: Context) -> Validator | None:
             checkers[dependent] = checker
 
     @_type_guard(dict)
-    def validate(x, path):
+    def validate(x: dict[str, Json], path: Path) -> ...:
         for dependent, checker in checkers.items():
             if dependent in x:
                 for err in checker(x, path):
                     yield ValidationError(
-                        path,
+                        tuple(path),
                         f"dependency for {dependent} not satisfied: {err.message}",
                         "dependencies",
                     )
@@ -111,13 +111,13 @@ def _path_push_iterator(
 
 
 @_register
-def properties(defn: Schema, context: Context) -> Validator | None:
+def properties(defn: Schema, context: Context) -> Validator:
     value = defn["properties"]
     validators = {k: _compile(v, context) for k, v in value.items()}
 
     @_type_guard(dict)
-    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-        for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
+    def validate(x: dict[str, Json], path: Path) -> Iterable[ValidationError]:
+        for k, v in _path_push_iterator(path, x):
             if k in validators:
                 yield from validators[k](v, path)
 
@@ -125,15 +125,15 @@ def properties(defn: Schema, context: Context) -> Validator | None:
 
 
 @_register
-def pattern_properties(defn: Schema, context: Context) -> Validator | None:
+def pattern_properties(defn: Schema, context: Context) -> Validator:
     value = defn["patternProperties"]
     validators = [(_re.compile(k), _compile(v, context)) for k, v in value.items()]
 
     @_type_guard(dict)
-    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
+    def validate(x: dict[str, Json], path: Path) -> Iterable[ValidationError]:
         # ugh...
         for rex, val in validators:
-            for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
+            for k, v in _path_push_iterator(path, x):
                 if rex.search(k):
                     yield from val(v, path)
 
@@ -141,7 +141,7 @@ def pattern_properties(defn: Schema, context: Context) -> Validator | None:
 
 
 @_register
-def additional_properties(defn: Schema, context: Context) -> Validator | None:
+def additional_properties(defn: Schema, context: Context) -> Validator:
     value = defn["additionalProperties"]
     simple_validator = _compile(value, context)
 
@@ -149,8 +149,8 @@ def additional_properties(defn: Schema, context: Context) -> Validator | None:
     excluded_rexes = [_re.compile(k) for k in defn.get("patternProperties", ())]
 
     @_type_guard(dict)
-    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-        for k, v in _path_push_iterator(path, x):  # pyright: ignore[reportArgumentType] (guarded)
+    def validate(x: dict[str, Json], path: Path) -> Iterable[ValidationError]:
+        for k, v in _path_push_iterator(path, x):
             if k in excluded_names:
                 continue
             if any(r.match(k) for r in excluded_rexes):

@@ -30,7 +30,7 @@ class Validator:
         schema: Schema | bool = True,
         formats: dict[str, Format] | None = None,
         handlers: dict[str, Handler] | None = None,
-    ):
+    ) -> None:
         formats = _FORMATS | (formats or {})
         handlers = _HANDLERS | (handlers or {})
         tracker = _RefTracker(schema, handlers=handlers)

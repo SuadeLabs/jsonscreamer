@@ -5,19 +5,15 @@ from typing import TYPE_CHECKING
 from .types import ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
     from typing import TypeVar
 
-    from .types import Compiler, Context, Schema
+    from .types import Compiler, Context, Json, Path, Schema, Validator
 
     _CT = TypeVar("_CT", bound=Compiler)
 
 
 _COMPILATION_FUNCTIONS: dict[str, Compiler] = {}
-
-
-def active_properties():
-    return frozenset(_COMPILATION_FUNCTIONS)
 
 
 def register(validator: _CT) -> _CT:
@@ -26,7 +22,7 @@ def register(validator: _CT) -> _CT:
     return validator
 
 
-def compile_(defn: Schema | bool, context: Context):
+def compile_(defn: Schema | bool, context: Context) -> Validator:
     if defn is True or defn == {}:
         return _true
     elif defn is False:
@@ -45,14 +41,14 @@ def compile_(defn: Schema | bool, context: Context):
                 if validator is not None:
                     validators.append(validator)
 
-        def validate(x, path):
+        def validate(x: Json, path: Path) -> Iterable[ValidationError]:
             for v in validators:
                 yield from v(x, path)
 
     return validate
 
 
-def compile_ref(defn: Schema, context: Context):
+def compile_ref(defn: Schema, context: Context) -> Validator:
     tracker = context.tracker
 
     with tracker._resolver.in_scope(defn["$ref"]):
@@ -60,7 +56,7 @@ def compile_ref(defn: Schema, context: Context):
         if uri not in tracker._picked:
             tracker.queue(uri)
 
-        def validate(x, path):
+        def validate(x: Json, path: Path) -> Iterable[ValidationError]:
             yield from tracker.compiled[uri](x, path)
 
         return validate
@@ -75,9 +71,9 @@ def _name_from_validator(validator: Callable) -> str:
     return "".join(pieces)
 
 
-def _true(x, path):
+def _true(x: Json, path: Path) -> tuple[ValidationError, ...]:
     return ()
 
 
-def _false(x, path):
-    return (ValidationError(path, f"{x} cannot satisfy false", "false"),)
+def _false(x: Json, path: Path) -> tuple[ValidationError]:
+    return (ValidationError(tuple(path), f"{x} cannot satisfy false", "false"),)

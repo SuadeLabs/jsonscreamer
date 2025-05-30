@@ -59,7 +59,7 @@ def _unique_checker(
         ok = not any(_unique_checker(x, path, _second_run=True))
 
     if not ok:
-        yield ValidationError(path, f"{x} has repeated items", "uniqueItems")
+        yield ValidationError(tuple(path), f"{x} has repeated items", "uniqueItems")
 
 
 @_register
@@ -88,16 +88,16 @@ def items(defn: Schema, context: Context) -> Validator | None:
         validators = [_compile(d, context) for d in value]
 
         @_type_guard(list)
-        def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-            for v, i in _path_push_iterator(path, zip(validators, x)):  # type: ignore[guarded]
+        def validate(x: list[Json], path: Path) -> Iterable[ValidationError]:
+            for v, i in _path_push_iterator(path, zip(validators, x)):
                 yield from v(i, path)
 
     else:
         validator = _compile(value, context)
 
         @_type_guard(list)
-        def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-            for i in _path_push_iterator(path, x):  # type: ignore[guarded]
+        def validate(x: list[Json], path: Path) -> Iterable[ValidationError]:
+            for i in _path_push_iterator(path, x):
                 yield from validator(i, path)
 
     return validate
@@ -114,8 +114,8 @@ def additional_items(defn: Schema, context: Context) -> Validator | None:
     validator = _compile(defn["additionalItems"], context)
 
     @_type_guard(list)
-    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-        for i in _path_push_iterator(path, x[offset:], offset):  # type: ignore (guarded)
+    def validate(x: list[Json], path: Path) -> Iterable[ValidationError]:
+        for i in _path_push_iterator(path, x[offset:], offset):
             yield from validator(i, path)
 
     return validate
@@ -128,14 +128,14 @@ def contains(defn: Schema, context: Context) -> Validator | None:
         return None
 
     @_type_guard(list)
-    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-        for i in x:  # type: ignore (guarded)
+    def validate(x: list[Json], path: Path) -> Iterable[ValidationError]:
+        for i in x:
             if not any(validator(i, path)):  # XXX: no error => item is in list
                 return ()
 
         return (
             ValidationError(
-                path,
+                tuple(path),
                 f"{x} did not contain any items satisfying {defn['contains']}",
                 "contains",
             ),
@@ -153,14 +153,14 @@ def max_contains(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["maxContains"]
 
     @_type_guard(list)
-    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-        total = sum(not any(validator(i, path)) for i in x)  # type: ignore (guarded)
+    def validate(x: list[Json], path: Path) -> Iterable[ValidationError]:
+        total = sum(not any(validator(i, path)) for i in x)
         if total <= value:
             return ()
 
         return (
             ValidationError(
-                path,
+                tuple(path),
                 f"{x} contains more than {value} items satisfying {defn['contains']}",
                 "maxContains",
             ),
@@ -178,14 +178,14 @@ def min_contains(defn: Schema, context: Context) -> Validator | None:
     value: int = defn["minContains"]
 
     @_type_guard(list)
-    def validate(x: Json, path: Path) -> Iterable[ValidationError]:
-        total = sum(not any(validator(i, path)) for i in x)  # type: ignore (guarded)
+    def validate(x: list[Json], path: Path) -> Iterable[ValidationError]:
+        total = sum(not any(validator(i, path)) for i in x)
         if total >= value:
             return ()
 
         return (
             ValidationError(
-                path,
+                tuple(path),
                 f"{x} contains less than {value} items satisfying {defn['contains']}",
                 "minContains",
             ),

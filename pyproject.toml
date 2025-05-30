@@ -64,7 +64,7 @@ select = [
   'N',      # pep8-naming: N
   'I',      # isort: I
   'ISC',    # flake8-implicit-str-concat: ISC
-  # 'ANN',    # flake8-annotations: ANN
+  'ANN',    # flake8-annotations: ANN
   'PYI',    # flake8-pyi: PYI
   'PT',     # flake8-pytest-style: PT (Specifically pytest-raises-too-broad)
   'T10',    # flake8-debugger: T10
