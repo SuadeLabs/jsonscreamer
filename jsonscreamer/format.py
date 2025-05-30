@@ -50,14 +50,16 @@ def is_date(x: str) -> bool:
         return False
 
 
+_EMAIL_REX = _re.compile(r"^(?!.*\.\..*@)[^@.][^@]*(?<!\.)@[^@]+\.[^@]+\Z")
+
+
 def is_email(x: str) -> bool:
-    """ "Internet email address, see RFC 5322, section 3.4.1."""
-    # TODO: this is from jsonschema, but obviously not in line with RFC
-    return "@" in x
+    """Internet email address, see RFC 5322, section 3.4.1."""
+    return bool(_EMAIL_REX.fullmatch(x))
 
 
 def is_ipv4(x: str) -> bool:
-    """ "IPv4 address, see RFC 2673, section 3.2."""
+    """IPv4 address, see RFC 2673, section 3.2."""
     try:
         _ipaddress.IPv4Address(x)
         return True
@@ -66,7 +68,7 @@ def is_ipv4(x: str) -> bool:
 
 
 def is_ipv6(x: str) -> bool:
-    """ "IPv6 address, see RFC 2373, section 2.2."""
+    """IPv6 address, see RFC 2373, section 2.2."""
     try:
         address = _ipaddress.IPv6Address(x)
         return not getattr(address, "scope_id", "")  # ???
@@ -93,7 +95,7 @@ def is_uuid(x: str) -> bool:
 
 
 def is_hostname(x: str) -> bool:
-    """ "Internet host name, see RFC 1034, section 3.1."""
+    """Internet host name, see RFC 1034, section 3.1."""
     try:
         return _FQDN(x).is_valid  # pyright: ignore[reportReturnType] (this is really a bool)
     except ValueError:
