@@ -1,10 +1,10 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
+requires = ["flit_core==3.10"]
 build-backend = "flit_core.buildapi"
 
 [project]
 name = "jsonscreamer"
-version = "0.4.2"
+version = "0.4.3"
 authors = [{ name = "Oliver Margetts" }]
 description = "fast json schema validator"
 requires-python = ">=3.10"
