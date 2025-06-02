@@ -18,7 +18,6 @@ from fastjsonschema.ref_resolver import (
     get_id,
     normalize,
     resolve_path,
-    resolve_remote,
 )
 
 if _TYPE_CHECKING:
@@ -74,6 +73,16 @@ def request_handler(uri: str) -> Json:
         return _json.load(resp)
 
 
+def resolve_remote(
+    uri: str, handlers: dict[str, Callable[[str], Schema | bool]]
+) -> Schema | bool:
+    scheme = _urlparse.urlsplit(uri).scheme
+    if scheme in handlers:
+        return handlers[scheme](uri)
+
+    raise ValueError(f"could not resolve schema ref: {uri!r}")
+
+
 HANDLERS = {"http": request_handler, "https": request_handler}
 
 
@@ -120,7 +129,7 @@ class RefResolver(_FastRefResolver):
 
         # TODO: edge case - fragments in ids - remove for later schemas
         if new_uri and new_uri in self.store:
-            schema: Schema = self.store[new_uri]
+            schema: Schema | bool = self.store[new_uri]
             fragment = ""
         elif uri and normalize(uri) in self.store:
             schema = self.store[normalize(uri)]
