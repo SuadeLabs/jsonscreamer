@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "jsonscreamer"
-version = "0.4.4"
+version = "0.5.0"
 authors = [{ name = "Oliver Margetts" }]
 description = "fast json schema validator"
 requires-python = ">=3.10"

@@ -84,7 +84,7 @@ def test_iter_errors():
     errors = list(validator.iter_errors(bad_instance))
     assert len(errors) == 9
 
-    actual_errors = [(e.absolute_path, e.type) for e in errors]
+    actual_errors = [(e.absolute_path, e.validator) for e in errors]
     expected_errors = [
         (("id",), "type"),
         (("name",), "type"),
