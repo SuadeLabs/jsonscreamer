@@ -20,7 +20,7 @@ def not_(defn: Schema, context: Context) -> Validator:
     def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         if not any(validator(x, path)):
             yield ValidationError(
-                tuple(path), f"{x} should not satisfy {defn['not']}", "not"
+                tuple(path), f"{x!r} should not satisfy {defn['not']!r}", "not"
             )
 
     return validate
@@ -53,7 +53,7 @@ def any_of(defn: Schema, context: Context) -> Validator:
         failures = ", ".join(messages)
         return (
             ValidationError(
-                tuple(path), f"{x} failed all conditions: {failures}", "anyOf"
+                tuple(path), f"{x!r} failed all conditions: {failures}", "anyOf"
             ),
         )
 
@@ -73,7 +73,9 @@ def one_of(defn: Schema, context: Context) -> Validator:
 
         if passed != 1:
             yield ValidationError(
-                tuple(path), f"{x} satisfied {passed} (!= 1) of the conditions", "oneOf"
+                tuple(path),
+                f"{x!r} satisfied {passed} (!= 1) of the conditions",
+                "oneOf",
             )
 
     return validate

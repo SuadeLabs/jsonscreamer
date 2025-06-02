@@ -22,7 +22,9 @@ Format = _Callable[[str], bool]
 class ValidationError(ValueError):
     """Raised when an instance does not conform to the provided schema."""
 
-    def __init__(self, absolute_path: ImmutablePath, message: str, validator: str) -> None:
+    def __init__(
+        self, absolute_path: ImmutablePath, message: str, validator: str
+    ) -> None:
         self.absolute_path = absolute_path
         self.message = message
         self.validator = validator

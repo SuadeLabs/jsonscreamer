@@ -63,7 +63,7 @@ def _unique_checker(
         ok = not any(_unique_checker(x, path, _second_run=True))
 
     if not ok:
-        yield ValidationError(tuple(path), f"{x} has repeated items", "uniqueItems")
+        yield ValidationError(tuple(path), f"{x!r} has repeated items", "uniqueItems")
 
 
 @_register
@@ -140,7 +140,7 @@ def contains(defn: Schema, context: Context) -> Validator | None:
         return (
             ValidationError(
                 tuple(path),
-                f"{x} did not contain any items satisfying {defn['contains']}",
+                f"{x!r} did not contain any items satisfying {defn['contains']!r}",
                 "contains",
             ),
         )
@@ -165,7 +165,7 @@ def max_contains(defn: Schema, context: Context) -> Validator | None:
         return (
             ValidationError(
                 tuple(path),
-                f"{x} contains more than {value} items satisfying {defn['contains']}",
+                f"{x!r} contains more than {value!r} items satisfying {defn['contains']!r}",
                 "maxContains",
             ),
         )
@@ -190,7 +190,7 @@ def min_contains(defn: Schema, context: Context) -> Validator | None:
         return (
             ValidationError(
                 tuple(path),
-                f"{x} contains less than {value} items satisfying {defn['contains']}",
+                f"{x!r} contains less than {value!r} items satisfying {defn['contains']!r}",
                 "minContains",
             ),
         )

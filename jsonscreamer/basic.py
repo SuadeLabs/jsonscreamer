@@ -94,7 +94,7 @@ def _min_len_validator(n: int, kind: str) -> Validator:
     def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         if len(x) < n:  # type: ignore (assumption: sized object provided)
             yield ValidationError(
-                tuple(path), f"{x} is too short (min length {n})", kind
+                tuple(path), f"{x!r} is too short (min length {n})", kind
             )
 
     return validate
@@ -104,7 +104,7 @@ def _max_len_validator(n: int, kind: str) -> Validator:
     def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         if len(x) > n:  # type: ignore (assumption: sized object provided)
             yield ValidationError(
-                tuple(path), f"{x} is too long (max length {n})", kind
+                tuple(path), f"{x!r} is too long (max length {n})", kind
             )
 
     return validate
@@ -133,7 +133,7 @@ def pattern(defn: Schema, context: Context) -> Validator | None:
     def validate(x: str, path: Path) -> Iterable[ValidationError]:
         if not rex.search(x):
             yield ValidationError(
-                tuple(path), f"'{x}' does not match pattern '{value}'", "pattern"
+                tuple(path), f"{x!r} does not match pattern {value!r}", "pattern"
             )
 
     return validate
@@ -153,10 +153,10 @@ def enum(defn: Schema, context: Context) -> Validator:
         try:
             if x not in members:
                 yield ValidationError(
-                    tuple(path), f"'{x}' is not one of {value}", "enum"
+                    tuple(path), f"{x!r} is not one of {value!r}", "enum"
                 )
         except TypeError:  # checking if unhashable type in a set of hashable objects
-            yield ValidationError(tuple(path), f"'{x}' is not one of {value}", "enum")
+            yield ValidationError(tuple(path), f"{x!r} is not one of {value!r}", "enum")
 
     return validate
 
@@ -167,7 +167,7 @@ def const(defn: Schema, context: Context) -> Validator:
 
     def validate(x: Json, path: Path) -> Iterable[ValidationError]:
         if x != value:
-            yield ValidationError(tuple(path), f"{x} is not {value}", "const")
+            yield ValidationError(tuple(path), f"{x!r} is not {value!r}", "const")
 
     return validate
 
@@ -182,12 +182,12 @@ def format_(defn: Schema, context: Context) -> Validator | None:
         def validate(x: str, path: Path) -> Iterable[ValidationError]:
             if not format(x):
                 yield ValidationError(
-                    tuple(path), f"{x} does not match format '{value}", "format"
+                    tuple(path), f"{x!r} does not match format {value!r}", "format"
                 )
 
         return validate
 
-    _logging.warning(f"Unsupported format ({value}) will not be checked")
+    _logging.warning(f"Unsupported format {value!r} will not be checked")
 
 
 @_register
@@ -197,7 +197,7 @@ def minimum(defn: Schema, context: Context) -> Validator | None:
     @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x < value:
-            yield ValidationError(tuple(path), f"{x} < {value}", "minimum")
+            yield ValidationError(tuple(path), f"{x!r} < {value!r}", "minimum")
 
     return validate
 
@@ -209,7 +209,9 @@ def exclusive_minimum(defn: Schema, context: Context) -> Validator | None:
     @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x <= value:
-            yield ValidationError(tuple(path), f"{x} <= {value}", "exclusiveMinimum")
+            yield ValidationError(
+                tuple(path), f"{x!r} <= {value!r}", "exclusiveMinimum"
+            )
 
     return validate
 
@@ -221,7 +223,7 @@ def maximum(defn: Schema, context: Context) -> Validator | None:
     @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x > value:
-            yield ValidationError(tuple(path), f"{x} > {value}", "maximum")
+            yield ValidationError(tuple(path), f"{x!r} > {value!r}", "maximum")
 
     return validate
 
@@ -233,7 +235,9 @@ def exclusive_maximum(defn: Schema, context: Context) -> Validator | None:
     @_number_guard(defn)
     def validate(x: float, path: Path) -> Iterable[ValidationError]:
         if x >= value:
-            yield ValidationError(tuple(path), f"{x} >= {value}", "exclusiveMaximum")
+            yield ValidationError(
+                tuple(path), f"{x!r} >= {value!r}", "exclusiveMaximum"
+            )
 
     return validate
 
@@ -253,7 +257,7 @@ def multiple_of(defn: Schema, context: Context) -> Validator | None:
             pass
 
         yield ValidationError(
-            tuple(path), f"{x} is not a multiple of {value}", "multipleOf"
+            tuple(path), f"{x!r} is not a multiple of {value!r}", "multipleOf"
         )
 
     return validate

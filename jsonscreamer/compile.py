@@ -44,7 +44,7 @@ def type_(
         def validate(x: Json, path: Path) -> ValidationError | None:
             if not type_checker(x):
                 return ValidationError(
-                    tuple(path), f"{x} is not of type '{required_type}'", "type"
+                    tuple(path), f"{x!r} is not of type {required_type!r}", "type"
                 )
 
     elif isinstance(required_type, list):
@@ -54,7 +54,7 @@ def type_(
             if not any(t(x) for t in type_checkers):
                 return ValidationError(
                     tuple(path),
-                    f"{x} is not any of the types '{required_type}'",
+                    f"{x!r} is not any of the types {required_type!r}",
                     "type",
                 )
 
@@ -135,4 +135,4 @@ def _true(x: Json, path: Path) -> tuple[ValidationError, ...]:
 
 
 def _false(x: Json, path: Path) -> tuple[ValidationError]:
-    return (ValidationError(tuple(path), f"{x} cannot satisfy false", "false"),)
+    return (ValidationError(tuple(path), f"{x!r} cannot satisfy false", "false"),)

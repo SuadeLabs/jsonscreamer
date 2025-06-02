@@ -55,7 +55,7 @@ def required(defn: Schema, context: Context) -> Validator | None:
             for v in value:
                 if v not in x:
                     yield ValidationError(
-                        tuple(path), f"{v} is a required property", "required"
+                        tuple(path), f"{v!r} is a required property", "required"
                     )
 
         return validate
@@ -92,7 +92,7 @@ def dependencies(defn: Schema, context: Context) -> Validator | None:
                 for err in checker(x, path):
                     yield ValidationError(
                         tuple(path),
-                        f"dependency for {dependent} not satisfied: {err.message}",
+                        f"dependency for {dependent!r} not satisfied: {err.message}",
                         "dependencies",
                     )
 
