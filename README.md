@@ -75,7 +75,7 @@ and the `ValidationError` class itself has the following properties:
 
 - `absolute_path`: the path to the error within the item (e.g. `("spam", 0, "eggs")`)
 - `message`: a human-readable error message
-- `type`: the type of validation error
+- `validator`: the type of validation error
 
 
 ### Custom formats
